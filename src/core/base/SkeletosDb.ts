@@ -4,6 +4,7 @@
 // *******************************************************************************
 /* tslint:disable:max-classes-per-file */
 import _ = require("lodash");
+import {getDefaultLogger} from "../helpers/logging/DefaultLogger";
 
 /**
  * A tree database that you can use to centrally store your application state in. Application
@@ -103,9 +104,9 @@ export class SkeletosDb {
      * 3. Given (1) and (2), when a node is updated, it is not just the path to root that gets a new hash value,
      * but all referencing nodes, and all their paths to root, are also updated. If you are building nested UI
      * components, this is invaluable as it allows you to make mutations in one place and have UI updated across
-     * a different hierarcy of components. For example, if you are building a new errorMessage counter in the top navbar,
-     * and you also display new errorMessage counter in the sidebar, you can update both those fields simply by mutating
-     * one node.
+     * a different hierarcy of components. For example, if you are building a new errorMessage counter in the top
+     * navbar, and you also display new errorMessage counter in the sidebar, you can update both those fields simply by
+     * mutating one node.
      *
      * 4. Hash values for all dirty nodes are changed in the next event loop. If each node is a prop for a React
      * component, this allows for batched UI updates.
@@ -194,6 +195,8 @@ export class SkeletosDb {
         transaction?: ISkeletosDbTransaction,
         options?: SkeletosDbSetterOptions): void {
 
+        options = options || {} as any;
+
         // DefinePlugin removes this as dead code in production
         if (process.env.NODE_ENV !== "production") {
             this.checkPath(path);
@@ -201,7 +204,7 @@ export class SkeletosDb {
 
         const pathVal: string = path.join("/");
 
-        if (value === null || value === undefined) {
+        if ((value === null || value === undefined) && !options.doNotDeleteOnNullValue) {
             // remove the existing path
             const existingNode: ITreeNode = this.getNode(pathVal);
             if (existingNode) {
@@ -262,7 +265,8 @@ export class SkeletosDb {
                     !_.isString(value) &&
                     !_.isBoolean(value) &&
                     !_.isDate(value)) {
-                    throw new Error("You can only use values of type string, boolean, Date and number to store in SkeletosDb.");
+                    throw new Error(
+                        "You can only use values of type string, boolean, Date and number to store in SkeletosDb.");
                 }
             }
 
@@ -315,7 +319,10 @@ export class SkeletosDb {
      */
     setReference(path: string[],
                  toPath: string[],
-                 transaction?: ISkeletosDbTransaction): void {
+                 transaction?: ISkeletosDbTransaction,
+                 options?: SkeletosDbSetterOptions): void {
+
+        options = options || {} as any;
 
         // DefinePlugin removes this as dead code in production
         if (process.env.NODE_ENV !== "production") {
@@ -386,13 +393,14 @@ export class SkeletosDb {
                 if (transaction) {
                     // note: separate the if statement for dead code removal.
                     if (process.env.NODE_ENV !== "production") {
-                        // tslint:disable-next-line:no-console
-                        console.warn(
-                            "You tried to set a reference from a node at path " + pathVal + " to another node " +
-                            "that does not exist, at path " + toPath.join("/") +
-                            ". Make sure you are not surprised when " +
-                            "retrieving the value for " + pathVal + " yields null or undefined."
-                        );
+                        if (!options.suppressWarnings) {
+                            getDefaultLogger().warn(
+                                "You tried to set a reference from a node at path " + pathVal + " to another node " +
+                                "that does not exist, at path " + toPath.join("/") +
+                                ". Make sure you are not surprised when " +
+                                "retrieving the value for " + pathVal + " yields null or undefined."
+                            );
+                        }
                     }
                 }
             }
@@ -479,7 +487,10 @@ export class SkeletosDb {
      */
     serialize(pathToStartFrom?: string[]): string {
         const alreadyProcessed: IPathBooleanIndex = {};
-        const serializedPaths: ITreeNodeIndex = {};
+        const serializedPaths: _.Dictionary<true> = {};
+
+        const retVal: ISerializedNode = {};
+        const retValPathToObjectCache: _.Dictionary<ISerializedNode> = {};
 
         let nodeToStartFrom: ITreeNode = this._rootNode;
         let nodeQueue: ITreeNode[] = [nodeToStartFrom];
@@ -489,7 +500,9 @@ export class SkeletosDb {
         if (pathToStartFrom && pathToStartFrom.length > 0) {
             nodeToStartFrom = this.getNode(pathToStartFrom);
             if (!nodeToStartFrom) {
-                throw new Error("There's no node at that path.");
+                // exit early, there's nothing to serialize
+                getDefaultLogger().warn("There's no node at the path \"/" + pathToStartFrom + "\".");
+                return "{}";
             }
 
             pathPrefix = nodeToStartFrom.path;
@@ -542,30 +555,31 @@ export class SkeletosDb {
                         currentNodeValue = this.escapeSpecialJsonCharacters(currentNodeValue);
                     }
 
-                    let valueType: EValueType;
-                    if (_.isString(currentNodeValue)) {
-                        valueType = EValueType.string;
-                    } else if (_.isBoolean(currentNodeValue)) {
-                        valueType = EValueType.boolean;
-                    } else if (_.isNumber(currentNodeValue)) {
-                        valueType = EValueType.number;
-                    } else if (_.isDate(currentNodeValue)) {
-                        valueType = EValueType.date;
-                    } else {
-                        valueType = EValueType.other;
+                    let isEmptyObject: boolean = false;
+                    let isDate: boolean;
+                    if (_.isDate(currentNodeValue)) {
+                        isDate = true;
+                    } else if (!_.isArray(currentNodeValue) &&
+                        _.isObject(currentNodeValue) && _.isEmpty(currentNodeValue)) {
+                        isEmptyObject = true;
                     }
 
-                    serializedPaths[pathToUseInSerializedPaths] = {
-                        value: _.clone(currentNodeValue),
-                        valueType: valueType,
-                        path: undefined, // set path as undefined because we already have it in the key.
-                        referencingPaths: referencingPaths ?
-                            _.map(referencingPaths, (referencingPath: string) => this.escapeSpecialJsonCharacters(referencingPath))
-                            : referencingPaths,
-                        hash: _.clone(currentNode.hash),
-                        dirty: false,
-                        children: undefined
-                    };
+                    serializedPaths[pathToUseInSerializedPaths] = true;
+
+                    retValPathToObjectCache[pathToUseInSerializedPaths] = {};
+
+                    if (!isEmptyObject) {
+                        retValPathToObjectCache[pathToUseInSerializedPaths].__v = _.clone(currentNodeValue);
+                    }
+                    if (isDate) {
+                        retValPathToObjectCache[pathToUseInSerializedPaths].__d = true;
+                    }
+                    if (referencingPaths && referencingPaths.length > 0) {
+                        retValPathToObjectCache[pathToUseInSerializedPaths].__r = _.map(
+                            referencingPaths,
+                            (referencingPath: string) => this.escapeSpecialJsonCharacters(referencingPath)
+                        );
+                    }
 
                     // make sure the referenced paths are all set as processed (optimization)
                     _.forEach(currentNode.referencingPaths,
@@ -586,7 +600,54 @@ export class SkeletosDb {
             }
         }
 
-        return JSON.stringify(serializedPaths);
+        // before we stringify, let's optimize the storage by making the serializedPaths hierarchical
+        _.forEach(serializedPaths, (value: true, path: string) => {
+            const childObject: ISerializedNode = retValPathToObjectCache[path];
+
+            let parentObject: ISerializedNode;
+            let lastSegment: string;
+
+            const lastIndexOfSlash: number = path.lastIndexOf("/");
+            if (lastIndexOfSlash < 0) {
+                parentObject = retVal;
+                lastSegment = path;
+            } else {
+                const parentPath: string = path.substring(0, lastIndexOfSlash);
+                parentObject = retValPathToObjectCache[parentPath];
+                lastSegment = path.substring(lastIndexOfSlash + 1);
+            }
+
+            parentObject[lastSegment] = childObject;
+        });
+
+        // another optimization: remove all those nodes that are empty
+        // start backwards to remove leaf nodes first, making their parents leaf nodes, recursively
+        const pathsOnly: string[] = _.keys(retValPathToObjectCache);
+        for (let i: number = pathsOnly.length - 1; i >= 0; i--) {
+            const path: string = pathsOnly[i];
+            const node: ISerializedNode = retValPathToObjectCache[path];
+            if (_.isEmpty(node)) {
+                let parentObject: ISerializedNode;
+                let segment: string;
+                if (path.length === 0) {
+                    parentObject = retVal;
+                    segment = path;
+                } else {
+                    const lastSlashIndex: number = path.lastIndexOf("/");
+                    if (lastSlashIndex < 0) {
+                        parentObject = retVal;
+                        segment = path;
+                    } else {
+                        parentObject = retValPathToObjectCache[path.substring(0, lastSlashIndex)];
+                        segment = path.substring(lastSlashIndex + 1);
+                    }
+                }
+
+                delete parentObject[segment];
+            }
+        }
+
+        return JSON.stringify(retVal);
     }
 
     /**
@@ -605,11 +666,11 @@ export class SkeletosDb {
             this._nodeCache = {};
         }
 
-        let serializedPaths: ITreeNodeIndex;
+        let serialized: ISerializedNode;
         if (_.isString(payload) || !payload) {
-            serializedPaths = JSON.parse((payload || "{}") as string);
+            serialized = JSON.parse((payload || "{}") as string);
         } else {
-            serializedPaths = payload as ITreeNodeIndex;
+            serialized = payload as ISerializedNode;
         }
 
         let pathPrefix: string = "";
@@ -617,37 +678,75 @@ export class SkeletosDb {
             pathPrefix = deserializeAtPath.join("/") + "/";
         }
 
+        interface IDeserializedNodeQueueItem {
+            node: ISerializedNode;
+            path: string;
+        }
+
+        const queue: IDeserializedNodeQueueItem[] = [{
+            node: serialized,
+            path: ""
+        }];
+        let currentQueueIndex: number = 0;
+
         const pathsThatExist: _.Dictionary<boolean> = {};
-        _.forEach(serializedPaths, (deserializedNode: ITreeNode, key: string) => {
+        while (currentQueueIndex < queue.length) {
+            const key: string = queue[currentQueueIndex].path;
+            const deserializedNode: ISerializedNode = queue[currentQueueIndex].node;
+
+            currentQueueIndex++;
 
             // backslashes are problematic when serializing JSON
             // we have to ensure an even number of backslashes
             const realPath: string = this.unescapeSpecialJsonCharacters(_.trim(pathPrefix + key, "/"));
             pathsThatExist[realPath] = true;
 
-            if (_.isString(deserializedNode.value)) {
-                deserializedNode.value = this.unescapeSpecialJsonCharacters(deserializedNode.value);
+            if (_.isString(deserializedNode.__v)) {
+                deserializedNode.__v = this.unescapeSpecialJsonCharacters(deserializedNode.__v);
 
                 // dates don't get serialized as Dates but as strings
-                if (deserializedNode.valueType === EValueType.date) {
-                    deserializedNode.value = new Date(deserializedNode.value);
+                if (deserializedNode.__d) {
+                    deserializedNode.__v = new Date(deserializedNode.__v);
                 }
-            }
-            if (deserializedNode.referencingPaths) {
-                for (let i: number = 0; i < deserializedNode.referencingPaths.length; i++) {
-                    deserializedNode.referencingPaths[i] = this.unescapeSpecialJsonCharacters(deserializedNode.referencingPaths[i]);
-                }
+            } else if (deserializedNode.__v === undefined) {
+                // undefined means empty object {}
+                deserializedNode.__v = {} as any;
             }
 
-            this.set(realPath.split("/"), deserializedNode.value, transaction, SkeletosDbSetterOptions.DO_NOT_VERIFY_VALUE_TYPE);
+            if (deserializedNode.__r) {
+                for (let i: number = 0; i < deserializedNode.__r.length; i++) {
+                    deserializedNode.__r[i] = this.unescapeSpecialJsonCharacters(deserializedNode.__r[i]);
+                }
+            } else if (deserializedNode.__r === undefined) {
+                // undefined means empty referencing paths
+                deserializedNode.__r = [];
+            }
 
-            if (deserializedNode.referencingPaths) {
-                _.forEach(deserializedNode.referencingPaths,
+            this.set(realPath.split("/"), deserializedNode.__v, transaction, SkeletosDbSetterOptions.DO_NOT_VERIFY_VALUE_TYPE);
+
+            if (deserializedNode.__r) {
+                _.forEach(deserializedNode.__r,
                     (referencingPath: string) =>
                         this.setReference((pathPrefix + referencingPath).split("/"), realPath.split("/"), transaction)
                 );
             }
-        });
+
+            _.forEach(deserializedNode, (value: any, segment: string) => {
+                if (!RESERVED_KEYWORDS[segment]) {
+                    let path: string;
+                    if (key.length === 0) {
+                        path = segment;
+                    } else {
+                        path = key + "/" + segment;
+                    }
+
+                    queue.push({
+                        node: value,
+                        path: path
+                    });
+                }
+            });
+        }
 
         // now remove all the paths under deserialized at path that don't exist
 
@@ -773,6 +872,15 @@ export class SkeletosDb {
         if (pathVal.indexOf("/") !== -1) {
             throw new Error("The path has a '/' character. Remove any forward slashes " +
                 "from the path " + path + ". See stack trace for more details.");
+        } else {
+            // check for reserved keyword
+            for (const disallowedKeyword of RESERVED_KEYWORDS_ARRAY) {
+                if (pathVal.indexOf("," + disallowedKeyword) >= 0 ||
+                    _.startsWith(pathVal, disallowedKeyword)) {
+                    throw new Error("You cannot use " + disallowedKeyword + " in the path " + path +
+                        " because it is reserved by the database.");
+                }
+            }
         }
     }
 
@@ -903,10 +1011,6 @@ export class SkeletosDb {
  */
 export type TreeNodeValueType = number | string | boolean | Date;
 
-export enum EValueType {
-    other, number, string, boolean, date
-}
-
 /**
  * Represents a node that is stored in the tree.
  */
@@ -919,9 +1023,9 @@ export interface ITreeNode {
     value: any;
 
     /**
-     * Only used when serializing/deserializing to ensure correct types for the values.
+     * Only used when serializing/deserializing
      */
-    valueType?: EValueType;
+    isDate?: boolean;
 
     /**
      * The path from the root this node is stored at.
@@ -981,13 +1085,19 @@ export class SkeletosDbSetterOptions {
     static DO_NOT_VERIFY_VALUE_TYPE: SkeletosDbSetterOptions = new SkeletosDbSetterOptions(true);
 
     doNotVerifyValueType: boolean;
+    doNotDeleteOnNullValue: boolean;
+    suppressWarnings: boolean;
 
     /**
      *
      * @param doNotVerifyValueType skips checking for the type of value at debug time.
      */
-    constructor(doNotVerifyValueType: boolean) {
+    constructor(doNotVerifyValueType?: boolean,
+                doNotDeleteOnNullValue?: boolean,
+                suppressWarnings?: boolean) {
         this.doNotVerifyValueType = doNotVerifyValueType;
+        this.doNotDeleteOnNullValue = doNotDeleteOnNullValue;
+        this.suppressWarnings = suppressWarnings;
     }
 }
 
@@ -1032,6 +1142,37 @@ export interface ISkeletosDbTransaction {
 
 export type ISkeletosDbListener = () => void;
 
+/**
+ * When nodes are serialized to be sent across the wire
+ */
+export interface ISerializedNode {
+    /**
+     * Maps to value
+     */
+    __v?: TreeNodeValueType;
+
+    /**
+     * Maps to isDate
+     */
+    __d?: boolean;
+
+    /**
+     * Maps to referencingPaths
+     */
+    __r?: string[];
+}
+
+/**
+ * Keys that are disallowed in the database because they are reserved by the database.
+ *
+ * @type {{__v: boolean; __d: boolean; __r: boolean}}
+ */
+export const RESERVED_KEYWORDS: _.Dictionary<true> = {
+    __v: true,
+    __d: true,
+    __r: true
+};
+export const RESERVED_KEYWORDS_ARRAY: string[] = _.keys(RESERVED_KEYWORDS);
 
 // UTILITY METHODS ----------------------------------------
 

@@ -6,7 +6,7 @@
 import async = require("async");
 import _ = require("lodash");
 import {getDefaultLogger} from "../helpers/logging/DefaultLogger";
-import {ICommandFunction} from "./ICommandFunction";
+import {ISkeletosCommand} from "./ISkeletosCommand";
 
 /**
  * An action is the place where you would place any business logic that needs to be done on the server. It is a
@@ -17,7 +17,7 @@ import {ICommandFunction} from "./ICommandFunction";
  * in some defined order. Under the covers, the action uses async.auto(..) to determine the pipeline of commands
  * that need to be executed. See getCommands(..).
  */
-export class AbstractAction {
+export abstract class AbstractAction {
 
     /**
      * The name of the action (same as name of class in development).
@@ -54,9 +54,8 @@ export class AbstractAction {
      * action, then you may not currently have all the data to initialize variables with.
      */
     constructor() {
-        // pretty cool mechanism to get the name of the current class. Only works server side where classes
-        // aren't obfuscated. When viewing client side in the browser console names are condensed
-        // to two-letter lookup symbols.
+        // pretty cool mechanism to get the name of the current class. Only works in debug mode because in prod all
+        // names are condensed to two-letter lookup symbols.
         this._actionName = this.constructor.toString().match(/\w+/g)[1];
     }
 
@@ -71,12 +70,12 @@ export class AbstractAction {
         if (!this._executionAborted) {
             this._startTime = new Date().getTime();
 
-            let cmds: object = this.getCommands();
-            if (this._actionTimeOut !== 0) {
-                // wrap getCommands with an extra function that invokes a timeout
-                cmds = this._wrapCommandsWithTimeout();
+            const commands = this.wrapCommands();
+            if (_.isArray(commands)) {
+                async.series(commands as Array<async.AsyncFunction<any, Error>>, this.doFinish.bind(this));
+            } else {
+                async.auto(commands, this.doFinish.bind(this));
             }
-            async.auto(cmds, this.doFinish.bind(this));
         }
     }
 
@@ -92,8 +91,23 @@ export class AbstractAction {
     }
 
     /**
-     * Returns the action map used to feed into async.auto. Override this method and return something in the
-     * following format:
+     * Returns an Array of Functions or an action map used to feed into async.series or async.auto respectively.
+     *
+     * For example, you can either return this:
+     *
+     * <code>
+     * return [
+     *   this.callFunctionSynchronously(this.command1),
+     *   this.callFunctionSynchronously(this.command2),
+     *   this.callFunctionAsynchronously(this.command3),
+     *   this.callAnotherAction(new AnotherAction())
+     * ];
+     * </code>
+     *
+     * And command1 will be executed first, followed by command2, followed by command3, followed by AnotherAction.
+     *
+     *
+     * Alternatively, you can run things in parallel using the following format:
      *
      * <code>
      * {
@@ -104,7 +118,7 @@ export class AbstractAction {
      *  Command3: ["Command1", this.callFunctionSynchronously(this.command3)], // depends on Command 1 also
      *
      *  Command4: ["Command1", "Command2", this.callFunctionAsynchronously(this.command4)], // depends on command1 and
-     *                                                                                         command2
+     * command2
      *
      *  Command5: this.callAnotherAction(new AnotherAction()) // does not depend on anything, executes another command
      * }
@@ -112,12 +126,8 @@ export class AbstractAction {
      *
      * See:
      * http://caolan.github.io/async/docs.html#.auto
-     *
-     * @param executeAsCommand whether this action is being executed as a command of another action
      */
-    protected getCommands(): object {
-        return {};
-    }
+    protected abstract getCommands(): ISkeletosCommand[] | object;
 
     /**
      * This method gets called right before the action is executed. It is a good chance to initialize variables instead
@@ -125,21 +135,13 @@ export class AbstractAction {
      * if this action is encapsulated within another action, then you may not currently have all the data to initialize
      * variables with.
      */
-    protected doBeforeExecute(): void {
-        // nothing
-    }
+    protected abstract doBeforeExecute(): void;
 
     /**
      * This method gets called right after the action is executed. It is a good chance to cleanup anything you
      * initialized.
      */
-    protected doAfterExecute(err?: Error): void | Promise<void> {
-        // if an error occurred during execution and turnOffTimeout wasn't called, then we need to ensure the timeout
-        // is cleared
-        if (this._actionTimeOutID) {
-            clearTimeout(this._actionTimeOutID);
-        }
-    }
+    protected abstract doAfterExecute(err?: Error): void;
 
     /**
      * Shows an error notification. By default, outputs to console.
@@ -150,7 +152,9 @@ export class AbstractAction {
         getDefaultLogger().error(err.message, err);
     }
 
-    // subclasses may want to override this to log a problem and/or display a translatible error message
+    /**
+     * Subclasses may want to override this to log a problem and/or display a translatable error message
+     */
     protected getTimeoutError(): Error {
         return new Error("The action took too long to execute.  Please try again or contact your administrator...");
     }
@@ -168,7 +172,7 @@ export class AbstractAction {
      *
      * @param action
      */
-    protected callAnotherAction(action: AbstractAction): ICommandFunction {
+    protected callAnotherAction(action: AbstractAction): ISkeletosCommand {
         return function executeActionAsCommand(
             prevResultsOrCallback: async.ErrorCallback<Error> | any,
             callback?: async.ErrorCallback<Error>): any {
@@ -184,7 +188,7 @@ export class AbstractAction {
                 // if nested action, then throw / propogate error up
                 action._onDoneOverride(e);
             }
-        } as ICommandFunction;
+        } as ISkeletosCommand;
     }
 
     /**
@@ -240,7 +244,7 @@ export class AbstractAction {
      * @returns {function((async.ErrorCallback<Error>|any), async.ErrorCallback<Error>=): any}
      */
     protected callFunctionAsynchronously(
-        fn: (callback: async.ErrorCallback<Error>) => any, thisArg?: any): ICommandFunction {
+        fn: (callback: async.ErrorCallback<Error>) => any, thisArg?: any): ISkeletosCommand {
         let me: any = thisArg;
         if (!me) {
             me = this;
@@ -267,23 +271,46 @@ export class AbstractAction {
         };
     }
 
-    private _wrapCommandsWithTimeout(): object {
-        // get the last command in the chain and use this as a pre-requisite
-        const cmds: object = this.getCommands();
+    /**
+     * Wraps commands returned by this.getCommands() for any additional processing by framework classes.
+     *
+     * For example, you can use this to wrap each command with a progress meter.
+     *
+     * This method only exists to help you write reusable code in your application. Do *not* use this instead of
+     * doBeforeExecute and doAfterExecute for business logic.
+     *
+     * @returns {ISkeletosCommand[] | object}
+     */
+    protected wrapCommands(): ISkeletosCommand[] | object {
+        let commands = _.clone(this.getCommands());
+        if (this._actionTimeOut !== 0) {
+            // wrap getCommands with an extra function that invokes a timeout
+            commands = this._wrapCommandsWithTimeout(commands);
+        }
 
-        // now extend commands using all command keys as pre-requisites
-        return _.extend(
-            {
-                startTimeout: this.callFunctionAsynchronously(this._startTimeout)
-            },
-            cmds,
-            {
-                turnOffTimeout: [
-                    ..._.keys(cmds),
-                    this.callFunctionAsynchronously(this._turnOffTimeout)
-                ]
-            }
-        );
+        return commands;
+    }
+
+    private _wrapCommandsWithTimeout(commands: ISkeletosCommand[] | object): ISkeletosCommand[] | object {
+        if (_.isArray(commands)) {
+            commands.unshift(this.callFunctionAsynchronously(this._startTimeout));
+            commands.push(this.callFunctionAsynchronously(this._turnOffTimeout));
+            return commands;
+        } else {
+            // now extend commands using all command keys as pre-requisites
+            return _.extend(
+                {
+                    startTimeout: this.callFunctionAsynchronously(this._startTimeout)
+                },
+                commands,
+                {
+                    turnOffTimeout: [
+                        ..._.keys(commands),
+                        this.callFunctionAsynchronously(this._turnOffTimeout)
+                    ]
+                }
+            );
+        }
     }
 
     private _startTimeout(callback: async.ErrorCallback<Error>) {
@@ -303,6 +330,12 @@ export class AbstractAction {
     }
 
     private doFinish(err?: Error): void {
+        // if an error occurred during execution and turnOffTimeout wasn't called, then we need to ensure the timeout
+        // is cleared
+        if (this._actionTimeOutID) {
+            clearTimeout(this._actionTimeOutID);
+        }
+
         this.doAfterExecute(err);
 
         if (this._onDoneOverride) {

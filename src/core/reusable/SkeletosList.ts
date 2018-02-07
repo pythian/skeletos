@@ -8,6 +8,9 @@ import {SkeletosCursor} from "../base/SkeletosCursor";
 import {SkeletosTransaction} from "../base/SkeletosTransaction";
 import {generateUniqueId} from "../helpers/generateUniqueId";
 import {SkeletosDbSetterOptions} from "../base/SkeletosDb";
+import {ClassTypeInfo} from "../decorators/helpers/ClassTypeInfo";
+import {IStateClassMetaDataOptions, STATE_META_DATA_KEY} from "../decorators/StateClass";
+import {MetadataRegistry} from "../decorators/helpers/MetadataRegistry";
 
 /**
  * A SkeletosList allows you to build a list of AbstractSkeletosState types. Note that you cannot store
@@ -64,33 +67,36 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * 1. This structure ensures that any removals and additions from the array does not screw up any references to
      * other items within the list (i.e., there is no incorrect resolutions due to array "shifting").
      *
-     * 2. Doing a get(index) on an item means doing a get(index) on the KEYLIST (which should be O(1) in most browsers),
+     * 2. Doing a get(index) on an item means doing a get(index) on the KEYLIST (which should be O(1) in most
+     * browsers),
      * and then using the value at that point to look up the item from the KEYMAP (which is O(1)). So we get O(1)
      * look up time on get(1).
      *
-     * 3. Similarly, for insert(index) on an item we get worst case scenario O(n) if index=0 since KEYLIST would have to
+     * 3. Similarly, for insert(index) on an item we get worst case scenario O(n) if index=0 since KEYLIST would have
+     * to
      * be shifted. In most scenarios, we are adding items at the end of the list, so this should be O(1) as well.
      *
      * 4. For remove(item), this is an interesting case. When we are supplied an item of type T from the list, how do
      * we know what index to remove? The way we do it from this structure is that from the cursor of the supplied item,
-     * we go up() one level on the cursor (from VALUE to item that contains KEY_ID and VALUE) and then select the KEY_ID.
-     * We look at the KEY_ID and search for it in the KEYLIST. When found, we remove the item with that KEY_ID. At worst,
-     * this is an O(n) removal because of the list search.
+     * we go up() one level on the cursor (from VALUE to item that contains KEY_ID and VALUE) and then select the
+     * KEY_ID. We look at the KEY_ID and search for it in the KEYLIST. When found, we remove the item with that KEY_ID.
+     * At worst, this is an O(n) removal because of the list search.
      *
      * 5. The GenID are IDs that the SkeletosList will internally generate to maintain an internal structure of items.
      *
      * 2. If you are wondering how do we store an array for KEYLIST, it is because we bypass the type check for value
-     * on the SkeletosDb. But wait, doesn't that mean that Transactions will not work since arrays are not immutable? No,
-     * because we generate a new array every time we modify the list, ensuring oldArray !== newArray. This is O(n) so
-     * points (1,2,3) are really whatever+O(n), but in practice this tends to be fast. If we come across performance
+     * on the SkeletosDb. But wait, doesn't that mean that Transactions will not work since arrays are not immutable?
+     * No, because we generate a new array every time we modify the list, ensuring oldArray !== newArray. This is O(n)
+     * so points (1,2,3) are really whatever+O(n), but in practice this tends to be fast. If we come across performance
      * problems, we may look at some other way of solving this.
      *
      */
 
-    private static PROP_KEYLIST: string = "____SKELETOSLIST_KEYLIST";
-    private static PROP_KEYMAP: string = "____SKELETOSLIST_KEYMAP";
-    private static PROP_ITEM_ID: string = "____SKELETOSLIST_KEY_ID";
-    private static PROP_VALUE: string = "____SKELETOSLIST_VALUE";
+    private static PROP_KEYLIST: string = "___LKL";
+    private static PROP_KEYMAP: string = "___LKM";
+    private static PROP_ITEM_ID: string = "___LII";
+    private static PROP_VALUE: string = "___LV";
+    private static PROP_TYPE: string = "___LT";
 
     private _typeConstructor: typeof AbstractSkeletosState;
 
@@ -102,7 +108,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param  {SkeletosCursor} cursor
      * @param typeConstructor
-     * @return {[type]}
+     * @return {[stateType]}
      */
     constructor(cursor: SkeletosCursor, typeConstructor: typeof AbstractSkeletosState);
 
@@ -112,7 +118,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param  {SkeletosList} stateToMakeCopyOf
      * @param  {SkeletosTransaction} transaction
-     * @return {[type]}
+     * @return {[stateType]}
      */
     constructor(stateToMakeCopyOf: SkeletosList<T>, transaction: SkeletosTransaction);
 
@@ -135,7 +141,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param  {number} index
      * @return {T}
      */
-    get(index: number): T {
+    get<X extends T>(index: number): X {
         this.rangeCheck(index);
 
         const idArray: string[] = this.keylistCursor.get() || [];
@@ -147,7 +153,16 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
         if (!referencedCursor.exists()) {
             return null;
         } else {
-            return this.newValue(referencedCursor);
+            const typeValue: string = this.keymapCursor.get(id, SkeletosList.PROP_TYPE);
+            let typeConstr: typeof AbstractSkeletosState;
+            if (typeValue) {
+                typeConstr = MetadataRegistry.constructorDict[typeValue];
+            }
+            if (!typeConstr) {
+                typeConstr = this._typeConstructor;
+            }
+
+            return this.newValue(referencedCursor, typeConstr) as X;
         }
     }
 
@@ -157,10 +172,10 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param  {T} item
      * @return {number}
      */
-    indexOf(item: T): number {
+    indexOf<X extends T>(item: X): number {
         return _.findIndex(this.asArray(),
-            (search: T): boolean =>
-            item.cursor.getHash() === search.cursor.getHash()
+            (search: X): boolean =>
+                item.cursor.getHash() === search.cursor.getHash()
         );
     }
 
@@ -187,7 +202,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param {T} item
      */
-    add(): T;
+    add<X extends T>(typeConstructorHint?: typeof AbstractSkeletosState): X;
 
     /**
      * Adds a new element at the given index and returns it. See the add() API for more details.
@@ -195,12 +210,12 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param {number} index
      * @param {T}      item
      */
-    add(index: number): T;
+    add<X extends T>(index: number, typeConstructorHint?: typeof AbstractSkeletosState): X;
 
     /**
      * Implementation.
      */
-    add(arg1?: number): T {
+    add<X extends T>(arg1?: number | typeof AbstractSkeletosState, typeConstructorHint?: typeof AbstractSkeletosState): X {
         const key: string = generateUniqueId();
 
         let arr: any[] = this.keylistCursor.get();
@@ -212,13 +227,28 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
         // for transaction rollback to work properly, we need to create a copy of the array
         arr = _.clone(arr);
 
+        let typeConstructor: typeof AbstractSkeletosState;
+        let index: number;
         if (arguments.length >= 1) {
-            if (arg1 < 0 || arg1 > arr.length) {
+            if (_.isNumber(arg1)) {
+                index = arg1 as number;
+            } else {
+                typeConstructor = arg1 as typeof AbstractSkeletosState;
+            }
+
+            if (typeConstructorHint) {
+                typeConstructor = typeConstructorHint;
+            }
+        }
+
+        if (index !== undefined) {
+            if (index < 0 || index > arr.length) {
                 throw new RangeError("SkeletosList: index out of range. Attempted to insert at a " +
                     "position in the array that is out of bounds. Position: " + arg1 + " and length " +
                     "of array: " + arr.length);
             }
-            arr.splice(arg1, 0, key);
+
+            arr.splice(index, 0, key);
         } else {
             arr.push(key);
         }
@@ -228,11 +258,23 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
         // set the key
         this.keymapCursor.set([key, SkeletosList.PROP_ITEM_ID], key);
 
+        // set the type if applicable
+        if (typeConstructor) {
+            const classTypeInfo: ClassTypeInfo = ClassTypeInfo.getOrCreateClassTypeInfo(typeConstructor);
+            const options: IStateClassMetaDataOptions = classTypeInfo.getExtension(STATE_META_DATA_KEY);
+            if (options && options.className) {
+                this.keymapCursor.set([key, SkeletosList.PROP_TYPE], options.className);
+            } else {
+                typeConstructor = this._typeConstructor;
+            }
+        } else {
+            typeConstructor = this._typeConstructor;
+        }
+
         // set the value as the new element. This just initializes it to a default new object.
         this.keymapCursor.set([key, SkeletosList.PROP_VALUE], {}, SkeletosDbSetterOptions.DO_NOT_VERIFY_VALUE_TYPE);
 
-        return this.newValue(this.keymapCursor.select(
-            key, SkeletosList.PROP_VALUE));
+        return this.newValue(this.keymapCursor.select(key, SkeletosList.PROP_VALUE), typeConstructor) as X;
     }
 
     /**
@@ -241,7 +283,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param {T} referenceTo
      */
-    addReference(referenceTo: T): T;
+    addReference<X extends T>(referenceTo: X): X;
 
     /**
      * Inserts an element into the list at the given index, where the element actually exists outside of the list.
@@ -251,17 +293,17 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param  {number} index
      * @return {T}
      */
-    addReference(referenceTo: T, index: number): T;
+    addReference<X extends T>(referenceTo: X, index: number): X;
 
     /**
      * Implementation.
      */
-    addReference(referenceTo: T, index?: number): T {
+    addReference<X extends T>(referenceTo: X, index?: number): X {
         let added: T;
         if (arguments.length > 1) {
-            added = this.add(index);
+            added = this.add(index, (referenceTo as AbstractSkeletosState).constructor.prototype);
         } else {
-            added = this.add();
+            added = this.add((referenceTo as AbstractSkeletosState).constructor.prototype);
         }
 
         this.setReference(referenceTo.cursor, added.cursor);
@@ -274,7 +316,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param {T} item
      */
-    addMany(howMany: number): T[];
+    addMany<X extends T>(howMany: number, typeConstructorHint?: typeof AbstractSkeletosState): X[];
 
     /**
      * Add many items at once into the list at the given index.
@@ -282,18 +324,32 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param {number} index
      * @param {T}      item
      */
-    addMany(howMany: number, index: number): T[];
+    addMany<X extends T>(howMany: number, index: number, typeConstructorHint?: typeof AbstractSkeletosState): X[];
 
     /**
      * Implementation.
      */
-    addMany(howMany: number, index?: number): T[] {
-        const items: T[] = [];
+    addMany<X extends T>(howMany: number, arg2?: number | typeof AbstractSkeletosState,
+                         typeConstructorHint?: typeof AbstractSkeletosState): X[] {
+        const items: X[] = [];
+
+        let typeConstructor: typeof AbstractSkeletosState;
+        let index: number;
+        if (_.isNumber(arg2)) {
+            index = arg2 as number;
+        } else if (arg2) {
+            typeConstructor = arg2 as typeof AbstractSkeletosState;
+        }
+
+        if (typeConstructorHint) {
+            typeConstructor = typeConstructorHint;
+        }
+
         for (let i: number = 0; i < howMany; i++) {
-            if (arguments.length > 1) {
-                items.push(this.add(index));
+            if (index !== undefined) {
+                items.push(this.add<X>(index, typeConstructor));
             } else {
-                items.push(this.add());
+                items.push(this.add<X>(typeConstructor));
             }
         }
 
@@ -305,7 +361,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param {T} item
      */
-    addManyReferences(referenceTo: T[]): T[];
+    addManyReferences<X extends T>(referenceTo: X[]): X[];
 
     /**
      * Add many referenced items at once into the list at the given index.
@@ -313,18 +369,18 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param {number} index
      * @param {T}      item
      */
-    addManyReferences(referenceTo: T[], index: number): T[];
+    addManyReferences<X extends T>(referenceTo: X[], index: number): X[];
 
     /**
      * Implementation.
      */
-    addManyReferences(referenceTo: T[], index?: number): T[] {
-        const items: T[] = [];
+    addManyReferences<X extends T>(referenceTo: X[], index?: number): X[] {
+        const items: X[] = [];
         for (let i: number = 0; i < referenceTo.length; i++) {
             if (arguments.length > 1) {
-                items.push(this.addReference(referenceTo[i], index));
+                items.push(this.addReference<X>(referenceTo[i], index));
             } else {
-                items.push(this.addReference(referenceTo[i]));
+                items.push(this.addReference<X>(referenceTo[i]));
             }
         }
 
@@ -336,7 +392,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @param item
      */
-    remove(item: T): void {
+    remove<X extends T>(item: X): void {
         this.removeAtIndex(this.indexOf(item));
     }
 
@@ -393,10 +449,11 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param  {any}                  thisArg
      * @return {T}
      */
-    find(predicate?: _.ListIterator<T, boolean>,
-         thisArg?: any): T {
-        const items: T[] = this.asArray();
-        return _.find<T>(items, predicate, thisArg);
+    find<X extends T>(
+        predicate?: _.ListIterator<X, boolean>,
+        thisArg?: any): X {
+        const items: X[] = this.asArray<X>();
+        return _.find<X>(items, predicate, thisArg);
     }
 
     /**
@@ -406,11 +463,11 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      *
      * @return {T[]}
      */
-    asArray(): T[] {
-        const retArr: T[] = [];
+    asArray<X extends T>(): X[] {
+        const retArr: X[] = [];
         const length: number = this.length;
         for (let i: number = 0; i < length; i++) {
-            retArr.push(this.get(i));
+            retArr.push(this.get<X>(i));
         }
 
         return retArr;
@@ -419,10 +476,10 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
     /**
      * Convenience method for _.map(list.asArray(), ...)
      *
-     * @type {[type]}
+     * @type {[stateType]}
      */
-    map<TResult>(iteratee: _.ListIterator<T, TResult>, thisArg?: any): TResult[] {
-        const items: T[] = this.asArray();
+    map<TResult, X extends T>(iteratee: _.ListIterator<X, TResult>, thisArg?: any): TResult[] {
+        const items: X[] = this.asArray<X>();
         return _.map(items, _.bind(iteratee, thisArg));
     }
 
@@ -435,8 +492,8 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param  {any}                  thisArg
      * @return {T[]}
      */
-    forEach(iteratee: _.ListIterator<T, boolean|void>, thisArg?: any): T[] {
-        const items: T[] = this.asArray();
+    forEach<X extends T>(iteratee: _.ListIterator<X, boolean|void>, thisArg?: any): X[] {
+        const items: X[] = this.asArray<X>();
         return _.forEach(items, _.bind(iteratee, thisArg));
     }
 
@@ -449,6 +506,15 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
             this.add();
             this.removeAtIndex(0);
         }
+    }
+
+    /**
+     * The type of values stored in this list. This does not include subclassed type.
+     *
+     * @returns {typeof AbstractSkeletosState}
+     */
+    get valueType(): typeof AbstractSkeletosState {
+        return this._typeConstructor;
     }
 
     /**
@@ -486,7 +552,7 @@ export class SkeletosList<T extends AbstractSkeletosState> extends AbstractSkele
      * @param cursor
      * @returns {T}
      */
-    private newValue(cursor: SkeletosCursor): T {
-        return new this._typeConstructor(cursor) as T;
+    private newValue(cursor: SkeletosCursor, typeConstructorHint: typeof AbstractSkeletosState): T {
+        return new typeConstructorHint(cursor) as T;
     }
 }

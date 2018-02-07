@@ -1,0 +1,79 @@
+#--------------------------------------------------------------------------------------------------------
+## JOB DESCRIPTION
+##
+job:
+  id: dist
+  do: build
+#--------------------------------------------------------------------------------------------------------
+
+
+
+
+#======================================================================================================
+## PROJECT DESCRIPTION
+##
+project:
+  name: skeletos-express
+
+  description: Builds on top of Skeletos to provide additional facilities for serving applications using Express.
+
+  dependencies:
+    - ../core
+    - ../web-router
+#======================================================================================================
+
+
+
+
+#******************************************************************************************************
+## REPO DESCRIPTION
+##
+repo:
+  root-directory: ../..
+
+  root-src-directory: ${repo:root-directory}/src
+#******************************************************************************************************
+
+
+
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+## DEVELOP TASK
+##
+develop: ${build}
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+## BUILD TASK
+##
+build:
+  do: typescript,library
+
+  typescript:
+    compile-files: index.ts
+
+  library:
+    entry: index.ts
+
+    copy:
+      - ${repo:root-directory}/LICENSE
+      - ${repo:root-directory}/CHANGELOG.md
+      - ${repo:root-directory}/CONTRIBUTING.md
+      - README.md
+
+    inverseAlias:
+      - find: ${repo:root-directory}/src/core/**
+        replace: skeletos
+      - find: ${repo:root-directory}/src/web-router/**
+        replace: skeletos-web-router
+
+    extraNpmModules:
+      skeletos: "^2.0.0"
+      skeletos-web-router: "^2.0.0"
+
+    bundleSuffix: rootPackageVersion
+
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

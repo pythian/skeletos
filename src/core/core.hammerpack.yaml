@@ -1,7 +1,3 @@
-#########################################################################################################
-## Settings for: skeletos/core
-#########################################################################################################
-
 #--------------------------------------------------------------------------------------------------------
 ## JOB DESCRIPTION
 ##
@@ -39,9 +35,9 @@ repo:
 ## DEVELOP TASK
 ##
 develop:
-  do: typescript,weblibrary
+  do: typescript,library
   typescript: ${build:typescript}
-  weblibrary: ${build:weblibrary}
+  library: ${build:library}
 #//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -51,12 +47,12 @@ develop:
 ## BUILD TASK
 ##
 build:
-  do: typescript,weblibrary
+  do: typescript,library
 
   typescript:
     compile-files: index.ts
 
-  weblibrary:
+  library:
     entry: index.ts
 
     copy:

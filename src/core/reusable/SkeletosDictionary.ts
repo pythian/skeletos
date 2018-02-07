@@ -7,6 +7,9 @@ import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
 import {SkeletosCursor} from "../base/SkeletosCursor";
 import {SkeletosTransaction} from "../base/SkeletosTransaction";
 import {SkeletosDbSetterOptions} from "../base/SkeletosDb";
+import {ClassTypeInfo} from "../decorators/helpers/ClassTypeInfo";
+import {IStateClassMetaDataOptions, STATE_META_DATA_KEY} from "../decorators/StateClass";
+import {MetadataRegistry} from "../decorators/helpers/MetadataRegistry";
 
 /**
  * A SkeletosDictionary allows you to build a dictionary where the keys are of type string and the
@@ -38,6 +41,8 @@ import {SkeletosDbSetterOptions} from "../base/SkeletosDb";
  * This form is a compile type dependency that is currently not supported.
  */
 export class SkeletosDictionary<T extends AbstractSkeletosState> extends AbstractSkeletosState {
+
+    private static PROP_TYPE: string = "___DT";
 
     private _typeConstructor: typeof AbstractSkeletosState;
     private _nameOfAttributeOfValueToCopyIntoKeyInto: string;
@@ -91,7 +96,7 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      * @param cursor
      * @param typeConstructor
      * @param nameOfAttributeOfValueToCopyIntoKeyInto
-     * @return {[type]}
+     * @return {[stateType]}
      */
     constructor(
         cursor: SkeletosCursor,
@@ -186,7 +191,7 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      * @param  {string} key
      * @return {T}
      */
-    get(key: string): T {
+    get<X extends T>(key: string): X {
         const childCursor: SkeletosCursor = this.cursor.select(key);
 
         // because of how the tree database works, childCursor === childCursor.selectReferenceCursor() when
@@ -196,7 +201,17 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
         if (!childCursor.exists() || !childCursor.selectReferencedCursor().exists()) {
             return null;
         } else {
-            return this.newValue(childCursor.selectReferencedCursor());
+            const referencedCursor: SkeletosCursor = childCursor.selectReferencedCursor();
+            const typeValue: string = referencedCursor.get(SkeletosDictionary.PROP_TYPE);
+            let typeConstr: typeof AbstractSkeletosState;
+            if (typeValue) {
+                typeConstr = MetadataRegistry.constructorDict[typeValue];
+            }
+            if (!typeConstr) {
+                typeConstr = this._typeConstructor;
+            }
+
+            return this.newValue(referencedCursor, typeConstr) as X;
         }
     }
 
@@ -213,18 +228,18 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      *
      * So instead you would write:
      *
-     * var item: T = dict.getOrPut(key);
+     * var item: T = dict.getIfExistsOrPut(key);
      *
      * @param key
      */
-    getIfExistsOrPut(key: string): T {
+    getIfExistsOrPut<X extends T>(key: string, typeConstructorHint?: typeof AbstractSkeletosState): X {
         let value: T = this.get(key);
 
         if (!value) {
-            value = this.put(key);
+            value = this.put(key, typeConstructorHint);
         }
 
-        return value;
+        return value as X;
     }
 
     /**
@@ -256,8 +271,8 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      *
      * @param {T} item
      */
-    put(key: string): T {
-        return this.internalPut(key);
+    put<X extends T>(key: string, typeConstructorHint?: typeof AbstractSkeletosState): X {
+        return this.internalPut(key, false, typeConstructorHint) as X;
     }
 
     /**
@@ -277,8 +292,9 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      * @param referenceTo
      * @returns {T}
      */
-    putReference(key: string, referenceTo: T): T {
-        const cursor: SkeletosCursor = this.internalPut(key, true).cursor;
+    putReference<X extends T>(key: string, referenceTo: X): X {
+        const cursor: SkeletosCursor = this.internalPut(key, true,
+            (referenceTo as AbstractSkeletosState).constructor.prototype).cursor;
 
         this.setReference(referenceTo.cursor, cursor);
 
@@ -296,7 +312,7 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      * @param values The values to put references to.
      * @see #putReference
      */
-    putReferencesToall(keyAttr: string, values: T[]): T[] {
+    putReferencesToAll<X extends T>(keyAttr: string, values: X[]): X[] {
         _.forEach(
             values,
             (value: T): void => {
@@ -335,8 +351,8 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      *
      * @return {_.Dictionary<T>}
      */
-    asDictionary(): _.Dictionary<T> {
-        const dictionary: _.Dictionary<T> = {};
+    asDictionary<X extends T>(): _.Dictionary<X> {
+        const dictionary: _.Dictionary<X> = {};
         let children: any = this.cursor.getTreeNode();
         if (children) {
             children = children.children;
@@ -346,8 +362,7 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
 
         _.forEach(
             children, (value: any, key: string, thisArg?: any): void => {
-                const state: T = this.newValue(this.cursor.select(key));
-                dictionary[key] = state;
+                dictionary[key] = this.get<X>(key);
             }
         );
 
@@ -368,16 +383,16 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      *
      * @returns {T[]}
      */
-    values(): T[] {
-        return this.map((value: T) => value);
+    values<X extends T>(): X[] {
+        return this.map((value: X) => value);
     }
 
     /**
      * Convenience method for _.forEach(dict.asDictionary(), ...).
      *
-     * @type {[type]}
+     * @type {[stateType]}
      */
-    forEach(iteratee: _.DictionaryIterator<T, boolean|void>, thisArg?: any): _.Dictionary<T> {
+    forEach<X extends T>(iteratee: _.DictionaryIterator<X, boolean|void>, thisArg?: any): _.Dictionary<X> {
         return _.forEach(
             this.asDictionary(),
             _.bind(iteratee, thisArg)
@@ -387,11 +402,11 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
     /**
      * Convenience method for _.map(dict.asDictionary(), ...).
      *
-     * @type {[type]}
+     * @type {[stateType]}
      */
-    map<TResult>(iteratee: _.DictionaryIterator<T, TResult>, thisArg?: any): TResult[] {
+    map<TResult, X extends T>(iteratee: _.DictionaryIterator<X, TResult>, thisArg?: any): TResult[] {
         return _.map(
-            this.asDictionary(),
+            this.asDictionary<X>(),
             _.bind(iteratee, thisArg)
         );
     }
@@ -419,13 +434,22 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
     }
 
     /**
+     * The type of values stored in this dictionary. This does not include subclassed type.
+     *
+     * @returns {typeof AbstractSkeletosState}
+     */
+    get valueType(): typeof AbstractSkeletosState {
+        return this._typeConstructor;
+    }
+
+    /**
      * Constructs a new instance of the supplied type for this dictionary.
      *
      * @param cursor
      * @returns {T}
      */
-    private newValue(cursor: SkeletosCursor): T {
-        return new this._typeConstructor(cursor) as T;
+    private newValue(cursor: SkeletosCursor, typeConstructorHint: typeof AbstractSkeletosState): T {
+        return new typeConstructorHint(cursor) as T;
     }
 
     /**
@@ -435,7 +459,8 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
      * @param doNotCopyIntoKey
      * @returns {T}
      */
-    private internalPut(key: string, doNotCopyIntoKey?: boolean): T {
+    private internalPut(key: string, doNotCopyIntoKey?: boolean,
+                        typeConstructorHint?: typeof AbstractSkeletosState): T {
         if (key === undefined || key === null) {
             throw new Error("Key cannot be null or undefined.");
         }
@@ -450,6 +475,18 @@ export class SkeletosDictionary<T extends AbstractSkeletosState> extends Abstrac
             this.cursor.set([key, this._nameOfAttributeOfValueToCopyIntoKeyInto], key);
         }
 
-        return this.newValue(this.cursor.select(key));
+        if (typeConstructorHint) {
+            const classTypeInfo: ClassTypeInfo = ClassTypeInfo.getOrCreateClassTypeInfo(typeConstructorHint);
+            const options: IStateClassMetaDataOptions = classTypeInfo.getExtension(STATE_META_DATA_KEY);
+            if (options && options.className) {
+                this.cursor.set([key, SkeletosDictionary.PROP_TYPE], options.className);
+            } else {
+                typeConstructorHint = this._typeConstructor;
+            }
+        } else {
+            typeConstructorHint = this._typeConstructor;
+        }
+
+        return this.newValue(this.cursor.select(key), typeConstructorHint);
     }
 }

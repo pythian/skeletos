@@ -1,0 +1,76 @@
+#--------------------------------------------------------------------------------------------------------
+## JOB DESCRIPTION
+##
+job:
+  id: dist
+  do: build
+#--------------------------------------------------------------------------------------------------------
+
+
+
+
+#======================================================================================================
+## PROJECT DESCRIPTION
+##
+project:
+  name: skeletos-web-router
+
+  description: Builds on top of Skeletos to provide additional facilities for routing for a web application.
+
+  dependencies:
+    - ../core
+    - ../shared-interfaces
+#======================================================================================================
+
+
+
+
+#******************************************************************************************************
+## REPO DESCRIPTION
+##
+repo:
+  root-directory: ../..
+
+  root-src-directory: ${repo:root-directory}/src
+#******************************************************************************************************
+
+
+
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+## DEVELOP TASK
+##
+develop: ${build}
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+## BUILD TASK
+##
+build:
+  do: typescript,library
+
+  typescript:
+    compile-files: index.ts
+
+  library:
+    entry: index.ts
+
+    copy:
+      - ${repo:root-directory}/LICENSE
+      - ${repo:root-directory}/CHANGELOG.md
+      - ${repo:root-directory}/CONTRIBUTING.md
+      - README.md
+
+    inverseAlias:
+      - find: ${repo:root-directory}/src/core/**
+        replace: skeletos
+
+    extraNpmModules:
+      skeletos: "^2.0.0"
+
+    bundleSuffix: rootPackageVersion
+
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

@@ -2,7 +2,6 @@
 // © The Pythian Group Inc., 2017
 // All Rights Reserved.
 // *******************************************************************************
-import _ = require("lodash");
 import {SkeletosTransaction} from "../base/SkeletosTransaction";
 import {SkeletosCursor} from "../base/SkeletosCursor";
 
@@ -69,6 +68,10 @@ import {SkeletosCursor} from "../base/SkeletosCursor";
  * const myWritableState: MyState = new MyState(myReadOnlyState, transaction);
  *
  * Here, myWritableState is a writable copy of myReadOnlyState.
+ *
+ * ---------------------------------------
+ *
+ * Note: this class is purposely not marked abstract because it needs to be instantiated as a standalone in certain cases.
  */
 export class AbstractSkeletosState {
     private _cursor: SkeletosCursor;
@@ -197,21 +200,5 @@ export class AbstractSkeletosState {
 
             from.setReference(cursor.path);
         }
-    }
-
-    /**
-     * A helper method for loading attributes from a server response.  If the specified key doesn't exist on the
-     * provided attributes then it is skipped, otherwise it gets set on this object.
-     *
-     * @param attributes
-     * @param key
-     * @private
-     */
-    protected _loadAttr(attributes: object, key: string): void {
-        if (_.isNil(attributes[key])) {
-            return;
-        }
-        this[key] = attributes[key];
-        return;
     }
 }

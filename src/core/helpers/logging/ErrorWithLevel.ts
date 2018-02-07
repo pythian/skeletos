@@ -1,5 +1,8 @@
 import {ELogLevel} from "./ELogLevel";
 
+/**
+ * A convenience class to encapsulate an Error with an ELogLevel.
+ */
 export class ErrorWithLevel extends Error {
 
     /**

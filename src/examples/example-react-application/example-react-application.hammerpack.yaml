@@ -1,0 +1,95 @@
+#--------------------------------------------------------------------------------------------------------
+## JOB DESCRIPTION
+##
+job:
+  id: dist
+  do: develop
+#--------------------------------------------------------------------------------------------------------
+
+
+
+
+#======================================================================================================
+## PROJECT DESCRIPTION
+##
+project:
+  name: skeletos-example-react-application
+
+  description: Uses various Skeletos packages to build a react example application.
+
+  dependencies:
+    - ../../core
+    - ../../react
+    - ../../react-express
+    - ../../web-router
+    - ../../sequelize
+    - ../../validate
+#======================================================================================================
+
+
+
+
+#******************************************************************************************************
+## REPO DESCRIPTION
+##
+repo:
+  root-directory: ../../..
+
+  root-src-directory: ${repo:root-directory}/src
+#******************************************************************************************************
+
+
+
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+## DEVELOP TASK
+##
+## The develop task is what you would use for developing your project
+##
+develop: ${build}
+#//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+## BUILD TASK
+##
+## The build task is what compiles the project for
+## production. It will produce a build artifact
+## against a checksum of involved dependencies
+## so that Peto can potentially reuse builds
+##
+build:
+  do: typescript|copyassets,webservice
+
+  copyassets:
+    dirs:
+      - ${repo:root-directory}/src/examples/example-react-application/**
+
+  ## Any environment variable configuration file to use for this project
+  ## You can have different one for build and deploy tasks
+  env-var-files:
+    dotenv: .env
+
+  typescript:
+    compile-files:
+      - server/index.ts
+      - client/index.tsx
+
+  webservice:
+    server:
+      entry: server/index.ts
+
+    client:
+      entry: client/index.tsx
+      browserPath: /
+
+      define:
+        process.env:
+          WEBAPP_HOTRELOAD_PUBLICURL: http://localhost:8081/
+
+    alias:
+      nprogress-js$: ${repo:root-directory}/node_modules/react-nprogress/nprogress.js
+      nprogress-css$: ${repo:root-directory}/node_modules/react-nprogress/nprogress.css
+#<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

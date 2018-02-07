@@ -1,6 +1,7 @@
 import {ILogger} from "./ILogger";
 import {inspect} from "util";
 import {ELogLevel} from "./ELogLevel";
+import {ErrorUtil} from "./ErrorUtil";
 
 export class ConsoleLogger implements ILogger {
 
@@ -8,58 +9,59 @@ export class ConsoleLogger implements ILogger {
         // do nothing
     }
 
-    error(message: string, meta?: any): void {
+    error(message: string|Error, context?: any): void {
         // tslint:disable-next-line:no-console
-        console.error(this.combineIntoString(message, meta));
+        console.error(this.combineIntoString(message, context));
     }
 
-    warn(message: string, meta?: any): void {
+    warn(message: string|Error, context?: any): void {
         // tslint:disable-next-line:no-console
         if (console.warn) {
             // tslint:disable-next-line:no-console
-            console.warn(this.combineIntoString(message, meta));
+            console.warn(this.combineIntoString(message, context));
         } else {
             // tslint:disable-next-line:no-console
-            console.log(this.combineIntoString(message, meta));
+            console.log(this.combineIntoString(message, context));
         }
     }
 
-    info(message: string, meta?: any): void {
+    info(message: string|Error, context?: any): void {
         // tslint:disable-next-line:no-console
-        console.log(this.combineIntoString(message, meta));
+        console.log(this.combineIntoString(message, context));
     }
 
-    debug(message: string, meta?: any): void {
+    debug(message: string|Error, context?: any): void {
         // tslint:disable-next-line:no-console
-        console.log(this.combineIntoString(message, meta));
+        console.log(this.combineIntoString(message, context));
     }
 
-    log(level: ELogLevel, message: string, meta?: any): void {
+    log(level: ELogLevel, message: string|Error, context?: any): void {
         switch (level) {
             case ELogLevel.error:
-                this.error(message, meta);
+                this.error(message, context);
                 break;
             case ELogLevel.warn:
-                this.warn(message, meta);
+                this.warn(message, context);
                 break;
             case ELogLevel.info:
-                this.info(message, meta);
+                this.info(message, context);
                 break;
             case ELogLevel.debug:
-                this.debug(message, meta);
+                this.debug(message, context);
                 break;
             default:
-                this.error(message, meta);
+                this.error(message, context);
                 break;
         }
     }
 
-    private combineIntoString(message: string, meta?: any): string {
-        if (meta) {
-            return `${message} meta:${inspect(meta)}`;
+    private combineIntoString(message: string|Error, context?: any): string {
+        const strMessage: string = ErrorUtil.stringify(message);
+        if (context) {
+            return `${strMessage} meta:${inspect(context)}`;
         }
 
-        return message;
+        return strMessage;
     }
 
 }

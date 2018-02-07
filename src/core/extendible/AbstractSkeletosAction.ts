@@ -2,12 +2,14 @@
 // © The Pythian Group Inc., 2017
 // All Rights Reserved.
 // *******************************************************************************
-import {LoadingState} from "../reusable/LoadingState";
-import {ErrorState} from "../reusable/ErrorState";
+import _ = require("lodash");
+import {LoadingState} from "./LoadingState";
+import {ErrorState} from "./ErrorState";
 import {SkeletosTransaction} from "../base/SkeletosTransaction";
 import {SkeletosCursor} from "../base/SkeletosCursor";
-import {AbstractAction} from "./AbstractAction";
-import {ICommandFunction} from "./ICommandFunction";
+import {ISkeletosCommand} from "./ISkeletosCommand";
+import {AbstractSkeletosState} from "./AbstractSkeletosState";
+import {AbstractProgressAction} from "./AbstractProgressAction";
 
 /**
  * A Skeletos action is the place where you would modify any Skeletos state. For example, you can
@@ -26,7 +28,8 @@ import {ICommandFunction} from "./ICommandFunction";
  * loading state at the beginning of the action, and will unset loading in the loading state at the end of the action.
  * Additionally, if error state is set, the action will use error state to post details of the errorMessage.
  */
-export class AbstractSkeletosAction extends AbstractAction {
+export abstract class AbstractSkeletosAction<RootStateType extends AbstractSkeletosState=AbstractSkeletosState>
+    extends AbstractProgressAction {
 
     protected _loadingState: LoadingState;
     protected _errorState: ErrorState;
@@ -74,12 +77,24 @@ export class AbstractSkeletosAction extends AbstractAction {
      * This method gets called right before the action is executed. It is a good chance to initialize variables instead
      * of initializing variables in the constructor. The problem with initializing variables in the constructor is that
      * if this action is encapsulated within another action, then you may not currently have all the data to initialize
-     * variables with.
+     * variables with. For example, you may not have the proper SkeletosTransaction to reconstruct the SkeletosStates
+     * with.
      *
-     * By default, this action shows the loading action. Make sure you call super.doBeforeExecute(..) in your subclass
-     * overridden method.
+     * For this reason, this overridden method goes through each field of type AbstractSkeletosState and makes sure
+     * that it is constructed with the transaction this action was supplied with.
+     *
+     * This action also shows the loading action.
+     *
+     * Make sure you call super.doBeforExecute(..) in your subclass overridden method.
      */
     protected doBeforeExecute(): void {
+        _.forEach(this, (value: any, key: string) => {
+            if (value instanceof AbstractSkeletosState) {
+                value = new (value as any).constructor(value, this.transaction);
+                this[key] = value;
+            }
+        });
+
         this.showLoading(this.getLoadingMessage());
     }
 
@@ -96,6 +111,30 @@ export class AbstractSkeletosAction extends AbstractAction {
     }
 
     /**
+     * Returns the Root State as per the supplied stateClass constructor.
+     *
+     * @param stateClass
+     * @returns {any}
+     */
+    protected getRootState(stateClass: typeof AbstractSkeletosState): RootStateType {
+        return new stateClass(this.rootCursor, this.transaction) as any;
+    }
+
+    /**
+     * Returns a mutable root state that can stay mutated even after there is an error in this action that incurs a
+     * rollback for the transaction. Hence why the mutation is "sticky".
+     *
+     * Use this mutable root state only when you want to modify the root state before you throw an error, and if you
+     * want this mutation to not be part of the rollback of this action's transaction.
+     *
+     * @param {typeof AbstractSkeletosState} stateClass
+     * @returns {RootStateType}
+     */
+    protected getStickyMutableRootState(stateClass: typeof AbstractSkeletosState): RootStateType {
+        return new stateClass(this.rootCursor, new SkeletosTransaction(this.rootCursor.db)) as any;
+    }
+
+    /**
      * That transaction that is used to track all the modifications.
      */
     protected get transaction(): SkeletosTransaction {
@@ -108,8 +147,6 @@ export class AbstractSkeletosAction extends AbstractAction {
      * @param err
      */
     protected doAfterExecute(err?: Error): void {
-        super.doAfterExecute(err);
-
         if (err) {
             this.transaction.rollback(err);
 
@@ -121,13 +158,17 @@ export class AbstractSkeletosAction extends AbstractAction {
                 this._errorState.errorTitle = err.name;
                 this._errorState.errorMessage = err.message;
                 this._errorState.stack = err.stack;
+
+                // tslint:disable-next-line:no-string-literal
+                this._errorState.details = err["details"];
             }
         } else {
             if (this._errorState) {
                 this._errorState.isErrorShown = false;
-                this._errorState.errorTitle = "";
-                this._errorState.errorMessage = "";
-                this._errorState.stack = "";
+                this._errorState.errorTitle = null;
+                this._errorState.errorMessage = null;
+                this._errorState.stack = null;
+                this._errorState.details = null;
             }
 
             if (this._loadingState && this._loadingState.loadingCount > 0) {
@@ -151,7 +192,7 @@ export class AbstractSkeletosAction extends AbstractAction {
      *
      * @param action
      */
-    protected callAnotherAction(action: AbstractSkeletosAction): ICommandFunction {
+    protected callAnotherAction(action: AbstractSkeletosAction): ISkeletosCommand {
         // share the same transaction
         action._transaction = this._transaction;
         action._errorState = this._errorState;

@@ -1,7 +1,7 @@
 # Skeletos 
 
-Skeletos is an in-memory state management framework for building large scale client applications. It works across 
-browsers/node/react-native.
+Skeletos is an in-memory state management framework for building large scale client and server applications. It works across 
+browsers/node/react-native and pretty much anything that can run javascript.
 
 Skeletos is used mostly for managing state and data lifecycle in React applications. It is meant to be used 
 *instead of* frameworks like Redux and Flux. Skeletos adopts the best design patterns that scale, while allowing you to

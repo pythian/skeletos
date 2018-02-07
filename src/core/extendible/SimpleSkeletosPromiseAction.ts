@@ -11,7 +11,7 @@ import Promise = require("bluebird");
  * errors, while still using a new transaction.
  *
  */
-export class SimpleSkeletosPromiseAction<ReturnType> extends SimpleSkeletosAction {
+export abstract class SimpleSkeletosPromiseAction<ReturnType> extends SimpleSkeletosAction {
 
     protected returnValue: ReturnType;
 

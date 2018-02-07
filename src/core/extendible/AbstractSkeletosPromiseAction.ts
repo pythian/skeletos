@@ -3,14 +3,15 @@
 // All Rights Reserved.
 // *******************************************************************************
 import Promise = require("bluebird");
-import {AbstractSkeletosProgressFeedbackAction} from "./AbstractSkeletosProgressFeedbackAction";
+import {AbstractSkeletosAction} from "./AbstractSkeletosAction";
+
 /**
  * This is simply a wrapper for the AbstractSkeletosAction that allows to to wrap
  * the .execute() function in a promise. This is useful when we which to interpret any callback
- * errors, while still using a new transaction.
+ * errors.
  *
  */
-export class AbstractSkeletosPromiseAction<ReturnType> extends AbstractSkeletosProgressFeedbackAction {
+export abstract class AbstractSkeletosPromiseAction<ReturnType> extends AbstractSkeletosAction {
 
     protected returnValue: ReturnType;
 
@@ -19,6 +20,8 @@ export class AbstractSkeletosPromiseAction<ReturnType> extends AbstractSkeletosP
 
     /**
      * Returns the action as a promise using the ReturnType as specified by the subclass.
+     *
+     * Do *not* use this in conjunction with `execute()`.
      *
      * @returns {Promise<T>|Promise}
      */

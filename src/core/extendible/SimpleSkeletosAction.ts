@@ -2,20 +2,19 @@
 // © The Pythian Group Inc., 2017
 // All Rights Reserved.
 // *******************************************************************************
-import {AbstractSkeletosProgressFeedbackAction} from "./AbstractSkeletosProgressFeedbackAction";
+
+import {AbstractSkeletosAction} from "./AbstractSkeletosAction";
 
 /**
  * A simple action that executes just one command.
  */
-export abstract class SimpleSkeletosAction extends AbstractSkeletosProgressFeedbackAction {
+export abstract class SimpleSkeletosAction extends AbstractSkeletosAction {
     protected static DO_EXECUTE_COMMAND_KEY: string = "doExecute";
 
     /**
      * Override this to do something
      */
-    protected doExecute(): void {
-        // nothing...subclasses to override.
-    }
+    protected abstract doExecute(): void;
 
     protected getCommands(): object {
         return {

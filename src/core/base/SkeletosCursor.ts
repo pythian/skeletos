@@ -9,12 +9,12 @@ import {SkeletosDb, ITreeNode, TreeNodeValueType, SkeletosDbSetterOptions} from 
 /**
  * Cursors are a way of managing a slice of the tree database. A cursor
  * is literally a pointer to a specific node in the tree database. Using
- * the cursor, you can get/set the value of the node, and also walk up 
+ * the cursor, you can get/set the value of the node, and also walk up
  * and down the tree from the cursor's current position.
- * 
+ *
  * Thus, you can see the Cursor being the middle layer between the database and
  * the application code:
- * 
+ *
  * ----------------------
  * AbstractSkeletosState
  * ----------------------
@@ -22,7 +22,7 @@ import {SkeletosDb, ITreeNode, TreeNodeValueType, SkeletosDbSetterOptions} from 
  * ----------------------
  * SkeletosDb
  * ----------------------
- * 
+ *
  * The cursor also introduces a layer of SkeletosTransaction in between, such
  * that any modifications made without a transaction are denied. Thus, it is
  * crucial that as an application developer you access the tree database through
@@ -32,7 +32,7 @@ export class SkeletosCursor {
 
     public static CANNOT_MODIFY_STATE_ERR_STR: string = "State couldn't be modified \
 because there is no transaction attached to the cursor. Make sure you are \
-running your modification code inside an action or a command.";
+running your modification code with a transaction (typically using an AbstractSkeletosAction).";
 
     /**
      * The underlying database.
@@ -51,28 +51,79 @@ running your modification code inside an action or a command.";
 
     /**
      * Constructs a new cursor that is backed by a new database.
+     *
+     * @param {boolean} writable Whether to make this cursor a writable cursor. Default: false If true, will create a
+     *     SkeletosTransaction
      */
-    constructor();
+    constructor(writable?: boolean);
+
+    /**
+     * Creates a new cursor that is backed by the given database and optionally makes it writable. The cursor becomes
+     * the root cursor.
+     *
+     * @param {SkeletosDb} db
+     * @param {boolean} writable Whether to make this cursor a writable cursor. Default: false If true, will create a
+     *     SkeletosTransaction
+     */
+    constructor(db: SkeletosDb, writable?: boolean);
+
+    /**
+     * Creates a new cursor that is backed by the given database. The cursor becomes
+     * the root cursor, with the given transaction.
+     *
+     * If no transaction is supplied, then it creates a read-only cursor clone.
+     *
+     * @param {SkeletosDb} db
+     * @param {SkeletosTransaction} transaction
+     */
+    constructor(db: SkeletosDb, transaction?: SkeletosTransaction);
+
+    /**
+     * Creates a new cursor that is a clone of the given cursor and optionally makes it writable.
+     *
+     * @param {SkeletosCursor} from
+     * @param {boolean} writable Whether to make this cursor a writable cursor. Default: false If true, will create a
+     *     SkeletosTransaction
+     */
+    constructor(from: SkeletosCursor, writable?: boolean);
 
     /**
      * Constructs a cursor that is a copy of the given cursor. Use this to create
      * a modifiable cursor from a read-only cursor. That is, if you have a cursor
-     * without a SkeletosTransaction, then use this constructor to supply one 
+     * without a SkeletosTransaction, then use this constructor to supply one
      * and create a modifiable cursor.
+     *
+     * If no transaction is supplied, then it creates a read-only cursor clone.
      */
     constructor(from: SkeletosCursor, transaction?: SkeletosTransaction);
 
     /**
      * Implementation.
      */
-    constructor(arg1?: SkeletosCursor, arg2?: SkeletosTransaction) {
-        if (arguments.length === 0) {
+    constructor(arg1?: boolean|SkeletosCursor|SkeletosDb, arg2?: boolean|SkeletosTransaction) {
+        let createNewTransaction: boolean = false;
+        
+        if (_.isBoolean(arg1)) {
             this._db = new SkeletosDb();
             this._path = [];
+            createNewTransaction = arg1;
         } else {
-            this._db = arg1._db;
-            this._path = arg1._path;
-            this._transaction = arg2;
+            if (arg1 instanceof SkeletosDb) {
+                this._db = arg1 as SkeletosDb;
+            } else if (arg1 instanceof SkeletosCursor) {
+                this._db = (arg1 as SkeletosCursor)._db;
+                this._path = (arg1 as SkeletosCursor)._path;
+            }
+            
+            if (_.isBoolean(arg2)) {
+                createNewTransaction = true;
+            } else if (arg2 instanceof SkeletosTransaction) {
+                this._transaction = arg2;
+            }
+        }
+        
+        if (createNewTransaction) {
+            this._transaction = new SkeletosTransaction("", this._db);
         }
     }
 
@@ -98,8 +149,17 @@ running your modification code inside an action or a command.";
     }
 
     /**
+     * Sets the transaction of this cursor.
+     *
+     * @param transaction
+     */
+    set transaction(transaction: SkeletosTransaction) {
+        this._transaction = transaction;
+    }
+
+    /**
      * Returns whether this is a read only cursor.
-     * 
+     *
      * A read only cursor is one with which you cannot update the value, because
      * there is no associated transaction.
      */

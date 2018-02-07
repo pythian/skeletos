@@ -40,8 +40,10 @@
 
         "member-access": false,
         "unified-signatures": false,
-        "prefer-for-of": false
+        "prefer-for-of": false,
 
+        "jsx-no-multiline-js": false,
+        "jsx-no-bind": false
     },
     "rulesDirectory": [
         "node_modules/tslint-microsoft-contrib"
