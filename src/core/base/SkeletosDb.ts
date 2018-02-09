@@ -787,11 +787,103 @@ export class SkeletosDb {
     }
 
     private escapeSpecialJsonCharacters(input: string): string {
-        return encodeURIComponent(input);
+        if (_.isEmpty(input)) {
+            return input;
+        }
+
+        return (input).replace(/["\\\n\r\t\u2028\u2029]/g, (character: string) => {
+            // http://www.ecma-international.org/ecma-262/5.1/#sec-7.8.4
+            switch (character) {
+                case "\"":
+                case "\'":
+                case "\\":
+                    return "\\" + character;
+                case "\n":
+                    return "\\n";
+                case "\b":
+                    return "\\b";
+                case "\f":
+                    return "\\f";
+                case "\r":
+                    return "\\r";
+                case "\t":
+                    return "\\t";
+                case "\u2028": // type of line terminator
+                    return "\\u2028";
+                case "\u2029": // type of line terminator
+                    return "\\u2029";
+                default:
+                    return character;
+            }
+        });
     }
 
     private unescapeSpecialJsonCharacters(input: string): string {
-        return decodeURIComponent(input);
+        if (_.isEmpty(input)) {
+            return input;
+        }
+
+        let retVal: string = "";
+        for (let i: number = 0; i < input.length; i++) {
+            if (i === input.length - 1) {
+                // last character
+                retVal += input.charAt(i);
+            } else {
+                const char = input.charAt(i);
+                const nextChar = input.charAt(i + 1);
+                if (char === "\\") {
+                    switch (nextChar) {
+                        case "\"":
+                            retVal += "\"";
+                            i += 1;
+                            break;
+                        case "\'":
+                            retVal += "\'";
+                            i += 1;
+                            break;
+                        case "\\":
+                            retVal += "\\";
+                            i += 1;
+                            break;
+                        case "n":
+                            retVal += "\n";
+                            i += 1;
+                            break;
+                        case "b":
+                            retVal += "\b";
+                            i += 1;
+                            break;
+                        case "f":
+                            retVal += "\f";
+                            i += 1;
+                            break;
+                        case "r":
+                            retVal += "\r";
+                            i += 1;
+                            break;
+                        case "t":
+                            retVal += "\t";
+                            i += 1;
+                            break;
+                        case "\u2028":
+                            retVal += "\u2028";
+                            i += 1;
+                            break;
+                        case "\u2029":
+                            retVal += "\u2029";
+                            i += 1;
+                            break;
+                        default:
+                            // something we don't recognize, treat as a slash
+                            retVal += "\\";
+                    }
+                } else {
+                    retVal += char;
+                }
+            }
+        }
+
+        return retVal;
     }
 
     /**
