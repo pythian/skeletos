@@ -3,8 +3,7 @@ import {
     AbstractHammerpackRenderAction,
     AbstractInitializeHammerpackWebServiceAction
 } from "../../../react-express-hammerpack";
-import {ExampleAppRenderAction} from "./ExampleAppRenderAction";
-
+import {ExampleAppRenderAction} from "./ExampleAppServerRenderAction";
 
 export class InitializeExampleReactApplicationAction extends AbstractInitializeHammerpackWebServiceAction {
 
@@ -12,8 +11,7 @@ export class InitializeExampleReactApplicationAction extends AbstractInitializeH
         request: express.Request, response: express.Response,
         next: express.NextFunction): AbstractHammerpackRenderAction<any, any> {
         return new ExampleAppRenderAction(
-            request, response, next, this.getStaticResourcesPath(), this.hammerpackParams);
+            request, response, next, this.hammerpackUtil);
     }
-
 
 }

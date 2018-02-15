@@ -19,6 +19,7 @@ project:
 
   dependencies:
     - ../core
+    - ../hammerpack
     - ../express
     - ../web-router
     - ../react-express
@@ -69,6 +70,8 @@ build:
     inverseAlias:
       - find: ${repo:root-directory}/src/core/**
         replace: skeletos
+      - find: ${repo:root-directory}/src/hammerpack/**
+        replace: skeletos-hammerpack
       - find: ${repo:root-directory}/src/express/**
         replace: skeletos-express
       - find: ${repo:root-directory}/src/web-router/**
@@ -78,6 +81,7 @@ build:
 
     extraNpmModules:
       skeletos: "^2.0.0"
+      skeletos-hammerpack: "^2.0.0"
       skeletos-express: "^2.0.0"
       skeletos-web-router: "^2.0.0"
       skeletos-react-express: "^2.0.0"

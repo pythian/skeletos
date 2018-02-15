@@ -1,5 +1,4 @@
 import {TodoRoute} from "./todos/TodoRoute";
-import {Validate} from "../../../../../validate";
 import {DummyRouteTreeSyncAction} from "../DummyRouteTreeSyncAction";
 import {DummyRouteSyncAction} from "../DummyRouteSyncAction";
 import {DummyRouteAsyncAction} from "../DummyRouteAsyncAction";
@@ -11,7 +10,6 @@ export class TodosRoute extends AbstractRouteState {
 
 
     @SegmentParam()
-    @Validate((joi) => joi.number().integer().positive())
     @Primitive()
     todoId: string;
 

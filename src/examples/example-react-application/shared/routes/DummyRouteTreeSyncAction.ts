@@ -26,6 +26,6 @@ export class DummyRouteTreeSyncAction extends AbstractRouteAction<HomeRoute, Hom
         setTimeout(() => {
             this.getRootState(RootState).loadedTreeSync += routeName + " Ended<br>";
             callback();
-        }, 500);
+        }, 0);
     }
 }

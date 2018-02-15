@@ -26,6 +26,6 @@ export class DummyRouteTreeAsyncAction extends AbstractRouteAction<HomeRoute, Ho
         setTimeout(() => {
             this.getRootState(RootState).loadedTreeAsync += routeName + " Ended<br>";
             callback();
-        }, 500);
+        }, 0);
     }
 }

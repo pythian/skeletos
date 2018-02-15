@@ -160,8 +160,8 @@ export abstract class AbstractSkeletosRenderAction<RootStateType extends Abstrac
             this.sendResponse(serverRendering);
             callback();
         } catch (e) {
-            getDefaultLogger().error(ErrorUtil.getDebugName(this) +
-                ": An error occurred responding to an express request.", this.req);
+            getDefaultLogger().error(ErrorUtil.customize(e, ErrorUtil.getDebugName(this) +
+                ": An error occurred responding to an express request."), this.req);
 
             this.rootRouteState.pageMetadata.errorMessage = ErrorUtil.getPrintableError(e);
             this.rootRouteState.pageMetadata.pageResponseCode = 500;
@@ -237,7 +237,7 @@ export abstract class AbstractSkeletosRenderAction<RootStateType extends Abstrac
 
             // if the redirect URL is not available, use the root route state, cuz maybe that was modified... ¯\_(ツ)_/¯
             if (!redirectUrl) {
-                redirectUrl = RouteBuilder.clone(this.rootRouteState).buildString();
+                redirectUrl = RouteBuilder.clone(this.rootRouteState).doNotResetChildRoutes().buildString();
                 this.rootRouteState.pageMetadata.redirectUrl = redirectUrl;
             }
 

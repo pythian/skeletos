@@ -1,5 +1,5 @@
 import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
-import {SkeletosDictionary} from "../reusable/SkeletosDictionary";
+import {SkeletosDictionary} from "../reusable/states/SkeletosDictionary";
 import {PropTypeInfo, EPropType} from "./helpers/PropTypeInfo";
 import {ClassTypeInfo} from "./helpers/ClassTypeInfo";
 import {ID_PROP_KEY} from "./Id";

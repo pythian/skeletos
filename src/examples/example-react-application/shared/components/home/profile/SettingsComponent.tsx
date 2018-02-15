@@ -1,30 +1,24 @@
 import * as React from "react";
-import {AbstractRouteComponent} from "../../../../../../react-web-router";
 import {DummyUiState} from "../../../states/DummyUiState";
 import {SettingsRoute} from "../../../routes/home/profile/SettingsRoute";
 import {HomeRoute} from "../../../routes/HomeRoute";
-import {LoadingState} from "../../../../../../core";
 import {AuthenticationComponent} from "./settings/AuthenticationComponent";
 import {AvatarComponent} from "./settings/AvatarComponent";
 import {OrgSelectorComponent} from "./settings/OrgSelectorComponent";
+import {AbstractDummyComponent} from "../../AbstractDummyComponent";
 
-export class SettingsComponent extends AbstractRouteComponent<DummyUiState, SettingsRoute, HomeRoute> {
-
-    protected doRender(): JSX.Element | false | null {
-        return (
-            <div>
-                SettingsComponent
-                <div style={{marginLeft: 30}}>
-                    <AuthenticationComponent skeletosState={this.skeletosState} route={this.route.authentication} />
-                    <AvatarComponent skeletosState={this.skeletosState} route={this.route.avatarSettings} />
-                    <OrgSelectorComponent skeletosState={this.skeletosState} route={this.route.orgSelector} />
-                </div>
-            </div>
-        );
+export class SettingsComponent extends AbstractDummyComponent<DummyUiState, SettingsRoute, HomeRoute> {
+    protected getComponentName(): string {
+        return "SettingsComponent";
     }
 
-    protected doRenderLoading(loading: LoadingState): JSX.Element | false | null {
-        return null;
+    protected getSubComponents(): JSX.Element | JSX.Element[] {
+        return [
+            <AuthenticationComponent key="auth" skeletosState={this.skeletosState} route={this.route.authentication} />,
+            <AvatarComponent key="avatar" skeletosState={this.skeletosState} route={this.route.avatarSettings} />,
+            <OrgSelectorComponent key="org" skeletosState={this.skeletosState} route={this.route.orgSelector} />
+        ];
     }
+
 
 }

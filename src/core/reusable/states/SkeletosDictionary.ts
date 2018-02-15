@@ -3,13 +3,13 @@
 // All Rights Reserved.
 // *******************************************************************************
 import _ = require("lodash");
-import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
-import {SkeletosCursor} from "../base/SkeletosCursor";
-import {SkeletosTransaction} from "../base/SkeletosTransaction";
-import {SkeletosDbSetterOptions} from "../base/SkeletosDb";
-import {ClassTypeInfo} from "../decorators/helpers/ClassTypeInfo";
-import {IStateClassMetaDataOptions, STATE_META_DATA_KEY} from "../decorators/StateClass";
-import {MetadataRegistry} from "../decorators/helpers/MetadataRegistry";
+import {AbstractSkeletosState} from "../../extendible/AbstractSkeletosState";
+import {SkeletosCursor} from "../../base/SkeletosCursor";
+import {SkeletosTransaction} from "../../base/SkeletosTransaction";
+import {SkeletosDbSetterOptions} from "../../base/SkeletosDb";
+import {ClassTypeInfo} from "../../decorators/helpers/ClassTypeInfo";
+import {IStateClassMetaDataOptions, STATE_META_DATA_KEY} from "../../decorators/StateClass";
+import {MetadataRegistry} from "../../decorators/helpers/MetadataRegistry";
 
 /**
  * A SkeletosDictionary allows you to build a dictionary where the keys are of type string and the

@@ -58,7 +58,11 @@ export class ConsoleLogger implements ILogger {
     private combineIntoString(message: string|Error, context?: any): string {
         const strMessage: string = ErrorUtil.stringify(message);
         if (context) {
-            return `${strMessage} meta:${inspect(context)}`;
+            if (context.kvLog) {
+                return `${strMessage} meta:${inspect(context.kvLog)}`;
+            } else {
+                return `${strMessage} meta:${inspect(context)}`;
+            }
         }
 
         return strMessage;

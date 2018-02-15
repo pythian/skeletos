@@ -4,9 +4,9 @@
 // *******************************************************************************
 import _ = require("lodash");
 
-import {SimpleSkeletosAction} from "../extendible/SimpleSkeletosAction";
-import {SkeletosCursor} from "../base/SkeletosCursor";
-import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
+import {SimpleSkeletosAction} from "../../extendible/SimpleSkeletosAction";
+import {SkeletosCursor} from "../../base/SkeletosCursor";
+import {AbstractSkeletosState} from "../../extendible/AbstractSkeletosState";
 
 export interface ISimpleStateSetterActionArg {
     cursorToSet: SkeletosCursor;

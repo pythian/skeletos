@@ -32,6 +32,6 @@ export class UrlUtils {
             }
         }
 
-        return _.trimEnd(urlString, "/") + "/";
+        return _.trim(urlString, "/") + "/";
     }
 }

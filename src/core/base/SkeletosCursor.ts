@@ -116,7 +116,7 @@ running your modification code with a transaction (typically using an AbstractSk
             }
             
             if (_.isBoolean(arg2)) {
-                createNewTransaction = true;
+                createNewTransaction = arg2;
             } else if (arg2 instanceof SkeletosTransaction) {
                 this._transaction = arg2;
             }

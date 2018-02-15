@@ -1,6 +1,7 @@
-import {getDefaultLogger} from "../../core";
+import {generateUniqueId, getDefaultLogger} from "../../core";
 import url = require("url");
 import _ = require("lodash");
+
 
 /**
  * Logs an express request using getDefaultLogger().
@@ -16,15 +17,10 @@ export function requestLogger() {
 
         // To track response time
         req._rlStartTime = new Date();
+        req._requestId = generateUniqueId();
 
         // Setup the key-value object of data to log and include some basic info
-        req.kvLog = {
-            date: req._rlStartTime.toISOString(),
-            method: req.method,
-            url: url.parse(req.originalUrl).pathname,
-            type: "reqlog",
-            headers: _.omit(req.headers, ["cookie"]) // remove potentially user confidential data from being logged.
-        };
+        req.kvLog = extractLoggingDetailsFromRequest(req);
 
         // Proxy the real end function
         // tslint:disable-next-line
@@ -50,5 +46,16 @@ export function requestLogger() {
         };
 
         next();
+    };
+}
+
+export function extractLoggingDetailsFromRequest(req: any): any {
+    return {
+        date: req._rlStartTime.toISOString(),
+        method: req.method,
+        url: url.parse(req.originalUrl).pathname,
+        type: "reqlog",
+        id: req._requestId,
+        headers: _.omit(req.headers, ["cookie"]) // remove potentially user confidential data from being logged.
     };
 }

@@ -4,9 +4,9 @@
 // *******************************************************************************
 import _ = require("lodash");
 
-import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
-import {SimpleSkeletosAction} from "../extendible/SimpleSkeletosAction";
-import {SkeletosDictionary} from "./SkeletosDictionary";
+import {AbstractSkeletosState} from "../../extendible/AbstractSkeletosState";
+import {SimpleSkeletosAction} from "../../extendible/SimpleSkeletosAction";
+import {SkeletosDictionary} from "../states/SkeletosDictionary";
 
 export interface ISimpleDictionaryReferenceSetterActionArg<T extends AbstractSkeletosState> {
     dictionaryToSet: SkeletosDictionary<T>;

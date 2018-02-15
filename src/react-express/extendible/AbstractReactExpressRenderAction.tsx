@@ -1,10 +1,11 @@
 import * as React from "react";
 import _ = require("lodash");
 import {renderToString} from "react-dom/server";
-import {AbstractSkeletosState, ErrorUtil} from "../../core";
+import {AbstractSkeletosState, ErrorUtil, getDefaultLogger} from "../../core";
 import {AbstractRootRouteState} from "../../web-router";
 import {AbstractSkeletosRenderAction} from "../../express";
 import {SkeletosReactConstants} from "../../react";
+import {SkeletosWebRouterConstants} from "../../web-router/helpers/SkeletosWebRouterConstants";
 
 /**
  * Subclasses AbstractSkeletosExpressAction to render the response using React. You can override various methods here to
@@ -115,7 +116,7 @@ export abstract class AbstractReactExpressRenderAction<RootStateType extends Abs
                 </div>
 
                 {/* tslint:disable-next-line */}
-                <script dangerouslySetInnerHTML={{__html: this.createScriptTagFromContents()}} />
+                <div dangerouslySetInnerHTML={{__html: this.createScriptTagFromContents()}} />
 
                 {this.renderBodyScriptTags()}
             </body>
@@ -133,7 +134,7 @@ export abstract class AbstractReactExpressRenderAction<RootStateType extends Abs
      */
     protected getBodyCustomScriptContents(): string {
         const serializedState: string = _.escape(this.getSerializedState() || "");
-        return `window.${SkeletosReactConstants.SKELETOS_DEHYDRATED_STATE_GLOBAL_ID} = "${serializedState}";`;
+        return `window.${SkeletosWebRouterConstants.SKELETOS_DEHYDRATED_STATE_GLOBAL_ID} = "${serializedState}";`;
     }
 
     /**

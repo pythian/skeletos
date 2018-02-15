@@ -1,5 +1,8 @@
 import _ = require("lodash");
-import {AbstractSkeletosPromiseAction, ClassTypeInfo, ErrorUtil, ISkeletosCommand} from "../../core";
+import {
+    AbstractSkeletosPromiseAction, ClassTypeInfo, ErrorUtil, ILoadingStateToReset, ISkeletosCommand,
+    ResetLoadingStatesAction
+} from "../../core";
 import {AbstractRootRouteState} from "../extendible/state/AbstractRootRouteState";
 import {Request, Response} from "../../shared-interfaces/ExpressInterfaces";
 import {AbstractRouteState, IRouteStateClassInfo} from "../";
@@ -18,6 +21,8 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
     private originalServerRequest: Request;
     private originalServerResponse: Response;
 
+    private loadingStatesToReset: ILoadingStateToReset[];
+
     constructor(
         currentRootRouteState: AbstractRootRouteState, oldRootRouteState?: AbstractRootRouteState,
         originalServerRequest?: Request, originalServerResponse?: Response) {
@@ -28,6 +33,8 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
         this.oldRootRouteState = oldRootRouteState;
         this.originalServerRequest = originalServerRequest;
         this.originalServerResponse = originalServerResponse;
+
+        this.determineLoadingStates();
     }
 
     protected getCommands(): ISkeletosCommand[] | object {
@@ -111,6 +118,7 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
             // we have to execute both series and parallel commands now. Will construct a single async.auto config
             // object and let async figure out the order of execution.
             const commands: object = {};
+            const allCommands: string[] = [];
             
             // add all the parallel commands first so that the browser selects them to be executed first if they are ajax.
             // This would eliminate any race conditions in the application code early in case the parallel commands
@@ -118,6 +126,7 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
             if (parallelCmds.length > 0) {
                 for (let i: number = 0; i < parallelCmds.length; i++) {
                     const routeName: string = "parallel" + i;
+                    allCommands.push(routeName);
                     commands[routeName] = this.callAnotherAction(parallelCmds[i]);
                 }
             }
@@ -126,6 +135,7 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
                 let lastDependency: string;
                 for (let i: number = 0; i < seriesCmds.length; i++) {
                     const routeName: string = "series" + i;
+                    allCommands.push(routeName);
 
                     if (lastDependency) {
                         commands[routeName] = [lastDependency, this.callAnotherAction(seriesCmds[i])];
@@ -136,7 +146,14 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
                     lastDependency = routeName;
                 }
             }
-            
+
+            if (this.loadingStatesToReset && this.loadingStatesToReset.length > 0) {
+                commands[LOADING_STATES_TO_RESET_COMMAND_NAME] = [
+                    ...allCommands,
+                    this.callAnotherAction(new ResetLoadingStatesAction(this.rootCursor, this.loadingStatesToReset))
+                ];
+            }
+
             return commands;
         } else {
             return [];
@@ -250,5 +267,35 @@ export class FireRouteUpdateAction extends AbstractSkeletosPromiseAction<void> {
         }
     }
 
+    private determineLoadingStates(): void {
+        const routes: AbstractRouteState[] = [this.currentRootRouteState];
+        let currentIndex: number = 0;
+        this.loadingStatesToReset = [];
 
+        /**
+         * Go through the entire route hierarchy and determine which routes are currently in a loading state. Save a
+         * reference to that loading state and the current value of its loading count. This value is important because
+         * it's the exact amount that we will decrease the loading count by after all the route actions has completed.
+         */
+        while (currentIndex < routes.length) {
+            const currentRoute: AbstractRouteState = routes[currentIndex];
+            currentIndex++;
+
+            // Record a ref to the loading state and its current loading count value
+            if (currentRoute.loadingCursor.exists() && currentRoute.loading.isLoading()) {
+                this.loadingStatesToReset.push({
+                    loadingState: currentRoute.loading,
+                    amountToDecrement: currentRoute.loading.loadingCount
+                });
+            }
+
+            for (const key in currentRoute) {
+                if (currentRoute[key] instanceof AbstractRouteState) {
+                    routes.push(currentRoute[key]);
+                }
+            }
+        }
+    }
 }
+
+const LOADING_STATES_TO_RESET_COMMAND_NAME: string = "___LOADING_STATES_TO_RESET_ACTION";

@@ -1,6 +1,6 @@
 import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
 import {SkeletosCursor} from "../base/SkeletosCursor";
-import {SkeletosDictionary} from "../reusable/SkeletosDictionary";
+import {SkeletosDictionary} from "../reusable/states/SkeletosDictionary";
 import {PropTypeInfo, EPropType} from "./helpers/PropTypeInfo";
 
 /**

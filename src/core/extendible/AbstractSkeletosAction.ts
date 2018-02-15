@@ -3,8 +3,8 @@
 // All Rights Reserved.
 // *******************************************************************************
 import _ = require("lodash");
-import {LoadingState} from "./LoadingState";
-import {ErrorState} from "./ErrorState";
+import {LoadingState} from "../reusable/states/LoadingState";
+import {ErrorState} from "../reusable/states/ErrorState";
 import {SkeletosTransaction} from "../base/SkeletosTransaction";
 import {SkeletosCursor} from "../base/SkeletosCursor";
 import {ISkeletosCommand} from "./ISkeletosCommand";

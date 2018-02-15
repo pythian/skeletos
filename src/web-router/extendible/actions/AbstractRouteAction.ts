@@ -98,8 +98,12 @@ export abstract class AbstractRouteAction<
         this.oldRoute = oldRoute;
         this.oldRootRoute = oldRootRoute;
 
-        this.newRoute = new (newRoute as any).constructor(newRoute, this.transaction);
-        this.newRootRoute = new (newRootRoute as any).constructor(newRootRoute, this.transaction);
+        if (newRoute) {
+            this.newRoute = new (newRoute as any).constructor(newRoute, this.transaction);
+        }
+        if (newRootRoute) {
+            this.newRootRoute = new (newRootRoute as any).constructor(newRootRoute, this.transaction);
+        }
 
         this.serverRequest = originalServerRequest;
         this.serverResponse = originalServerResponse;

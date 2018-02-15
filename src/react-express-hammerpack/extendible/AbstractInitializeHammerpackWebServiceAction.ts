@@ -1,10 +1,14 @@
 import _ = require("lodash");
 import {ConsoleLogger, ErrorUtil, getDefaultLogger, setDefaultLogger} from "../../core";
-import {AbstractInitializeServerAction, ProcessEnvUtils} from "../../express";
+import {AbstractInitializeServerAction} from "../../express";
 import express = require("express");
 import {AbstractHammerpackRenderAction} from "./AbstractHammerpackRenderAction";
 import * as serveStatic from "serve-static";
-import {IHammerpackParameters} from "./IHammerpackParameters";
+import favicon = require("serve-favicon");
+import fs = require("fs");
+import path = require("path");
+import {HammerpackWebserviceUtil, IHammerpackParameters} from "../../hammerpack";
+
 
 /**
  * Initializes the express server when using Hammerpack to develop/build.
@@ -12,11 +16,7 @@ import {IHammerpackParameters} from "./IHammerpackParameters";
 export abstract class AbstractInitializeHammerpackWebServiceAction
     extends AbstractInitializeServerAction<AbstractHammerpackRenderAction<any, any>> {
 
-    /**
-     * The startup parameters are the ones that are initially supplied to us through
-     * the bootstrap function.
-     */
-    protected hammerpackParams: IHammerpackParameters;
+    protected hammerpackUtil: HammerpackWebserviceUtil;
 
     /**
      * Export this function as the default of your server entry point.
@@ -34,7 +34,9 @@ export abstract class AbstractInitializeHammerpackWebServiceAction
 
         ErrorUtil.logUncaughtExceptionsAndUnhandledRejections();
 
-        this.initialize(hammerpackStartup);
+        hammerpackStartup.resources.staticAssetsPath = "/" + _.trim(this.getStaticResourcesPath(), "/") + "/";
+
+        this.hammerpackUtil = new HammerpackWebserviceUtil(hammerpackStartup);
 
         this.execute();
     }
@@ -74,63 +76,31 @@ export abstract class AbstractInitializeHammerpackWebServiceAction
         if (!staticResourcesPath) {
             this.expressApp.use(
                 express.static(
-                    this.hammerpackParams.resources.dir
+                    this.hammerpackUtil.params.resources.dir
                 )
             );
         } else {
             this.expressApp.use(
                 "/" + _.trim(staticResourcesPath, "/"),
                 express.static(
-                    this.hammerpackParams.resources.dir,
+                    this.hammerpackUtil.params.resources.dir,
                     this.getStaticResourcesConfig()
                 )
             );
         }
+
+        const serverPath: string = this.hammerpackUtil.getFilePath("favicon.ico", path);
+        if (fs.existsSync(serverPath)) {
+            this.expressApp.use(favicon(serverPath));
+        }
     }
 
     protected getPort(): number {
-        return this.hammerpackParams.port;
+        return this.hammerpackUtil.params.port;
     }
 
     protected getServerName(): string {
-        return this.hammerpackParams.projectName;
-    }
-
-    private initialize(params: IHammerpackParameters): void {
-        if (!params || !params.resources || !params.resources.clientFiles) {
-            throw new Error("params is incorrect and is likely not supplied by Hammerpack.");
-        }
-
-        this.hammerpackParams = params;
-        const fileNames: string[] = this.hammerpackParams.resources.clientFiles;
-        this.hammerpackParams.resources.jsFiles = [];
-        this.hammerpackParams.resources.cssFiles = [];
-
-        if (fileNames) {
-            for (const fileName of fileNames) {
-                if (fileName.endsWith(".js")) {
-                    this.hammerpackParams.resources.jsFiles.push(fileName);
-                } else if (fileName.endsWith(".css")) {
-                    this.hammerpackParams.resources.cssFiles.push(fileName);
-                }
-            }
-        }
-
-        // ensure we trim the extra / from the URLs.
-        this.hammerpackParams.resources.hotreload = _.trimEnd(this.hammerpackParams.resources.hotreload, "/") + "/";
-
-        this.hammerpackParams.enableHttps =
-            ProcessEnvUtils.getEnvVarAsBoolean(false, "HAMMERPACK_ENABLE_HTTPS", "ENABLEHTTPS", "ENABLE_HTTPS");
-        this.hammerpackParams.port = ProcessEnvUtils.getEnvVarAsNumber(8080, "PORT", "SERVER_PORT");
-        this.hammerpackParams.host = ProcessEnvUtils.getEnvVarAsString(null, "HOST", "SERVER_HOST");
-
-        // tslint:disable-next-line
-        const defaultPublicUrl: string = (this.hammerpackParams.enableHttps ? "https://" : "http://") +
-            (this.hammerpackParams.host ? this.hammerpackParams.host : "localhost") +
-            ((this.hammerpackParams.port !== 80 && this.hammerpackParams.port !== 443) ? ":" + this.hammerpackParams.port : "");
-
-        this.hammerpackParams.publicUrl =
-            _.trimEnd(ProcessEnvUtils.getEnvVarAsString(defaultPublicUrl, "PUBLICURL", "PUBLIC_URL"), "/") + "/";
+        return this.hammerpackUtil.params.projectName;
     }
 
 }

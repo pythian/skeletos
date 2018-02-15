@@ -1,5 +1,6 @@
-
-
+/**
+ * Constants for Skeletos-React package.
+ */
 export class SkeletosReactConstants {
 
     /**
@@ -8,7 +9,5 @@ export class SkeletosReactConstants {
      * @type {string}
      */
     public static ROOT_REACT_DIV_ID: string = "___app";
-
-    public static SKELETOS_DEHYDRATED_STATE_GLOBAL_ID: string = "___SKELETOS_STATE";
 
 }

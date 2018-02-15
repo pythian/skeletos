@@ -83,10 +83,11 @@
     "@types/events" "*"
     "@types/node" "*"
 
-"@types/express-session@^1.15.6":
-  version "1.15.6"
-  resolved "https://registry.yarnpkg.com/@types/express-session/-/express-session-1.15.6.tgz#eb7c913971a56ad0d83efebe4e9f7aaffa77d8ed"
+"@types/express-session@^1.15.8":
+  version "1.15.8"
+  resolved "https://registry.yarnpkg.com/@types/express-session/-/express-session-1.15.8.tgz#b187732e8fa88ad9fd5d93c021696460a0694b7c"
   dependencies:
+    "@types/events" "*"
     "@types/express" "*"
     "@types/node" "*"
 
@@ -2952,9 +2953,9 @@ growly@^1.3.0:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/growly/-/growly-1.3.0.tgz#f10748cbe76af964b7c96c93c6bcc28af120c081"
 
-hammerpack@^0.0.6:
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/hammerpack/-/hammerpack-0.0.6.tgz#6988a0fea602c8a9c79d6050a43a1045edb6e699"
+hammerpack@^0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/hammerpack/-/hammerpack-0.0.7.tgz#a650a3a16bc8fa6692dbedd8d241639fe82dc2aa"
   dependencies:
     abstract-leveldown "2.7.0"
     anymatch "^1.3.2"

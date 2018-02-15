@@ -10,6 +10,7 @@ import {NotFoundError} from "../reusable/NotFoundError";
 import {AbstractRootRouteState} from "../extendible/state/AbstractRootRouteState";
 import {FireRouteUpdateAction} from "../reusable/FireRouteUpdateAction";
 import {Request, Response} from "../../shared-interfaces/ExpressInterfaces";
+import {ISegmentPropInfo, SEGMENT_PROP_KEY} from "../decorators/Segment";
 
 
 export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType extends AbstractRootRouteState> implements IRouteBuilderInstance<T, RootStateType> {
@@ -23,6 +24,8 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
     serverResponse: Response;
 
     fireRouteUpdateActionClass: typeof FireRouteUpdateAction;
+
+    private _doNotResetChildRoutes: boolean;
 
     constructor(routeToClone: RootStateType, serverRequest?: Request, serverResponse?: Response,
                 fireRouteUpdateActionClass: typeof FireRouteUpdateAction = FireRouteUpdateAction) {
@@ -79,6 +82,9 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
         }
 
         this.resetRoutes(routesToReset);
+
+        // since we already reset all the routes, we do not want to reset anymore
+        this._doNotResetChildRoutes = true;
 
         currentRouteState = this.currentState;
 
@@ -193,9 +199,45 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
                 path = selector.cursor.path;
             }
 
-            this.currentState =
-                new (selector as any).constructor.prototype.constructor(
-                    this.clonedRoute.cursor.root().select(...path));
+            for (const pathSegment of path) {
+                const routeStateInfo: IRouteStateClassInfo = ClassTypeInfo.maybeGetExtension(
+                    this.currentState, ROUTESTATE_CLASS_KEY);
+                if (routeStateInfo.hasSegments) {
+                    const propTypeInfo: ISegmentPropInfo = PropTypeInfo.maybeGetExtension(
+                        this.currentState, pathSegment, SEGMENT_PROP_KEY);
+                    this.currentState.currentRoute = propTypeInfo.name;
+                    this.currentState = this.currentState.getCurrentRouteState() as any;
+                } else if (routeStateInfo.hasSegmentParams) {
+                    let newState: T = null;
+                    _.forEach(routeStateInfo.segmentParams, (value: true, propertyKey: string) => {
+                        const propTypeInfo = PropTypeInfo.getPropTypeInfo(this.currentState, propertyKey);
+                        if (propTypeInfo) {
+                            if (propTypeInfo.propType === EPropType.primitive) {
+                                this.currentState[propertyKey] = pathSegment;
+                            } else if (propTypeInfo.propType === EPropType.state) {
+                                newState = this.currentState[propertyKey];
+                            }
+                        }
+                    });
+
+                    this.currentState = newState;
+                } else {
+                    break;
+                }
+
+                // match the query parameters as well
+                const newRouteStateInfo: IRouteStateClassInfo = ClassTypeInfo.maybeGetExtension(
+                    this.currentState, ROUTESTATE_CLASS_KEY);
+                if (newRouteStateInfo) {
+                    _.forEach(newRouteStateInfo.queryParams, (propertyKey: string, queryParamKey: string) => {
+                        const queryParamCursor = selector.cursor.root().select(
+                            ...this.currentState.cursor.path.concat(propertyKey));
+                        if (queryParamCursor.exists()) {
+                            this.currentState[propertyKey] = queryParamCursor.get();
+                        }
+                    });
+                }
+            }
         }
 
         return this as any;
@@ -310,7 +352,32 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
         return this as any;
     }
 
+    resetAllQueryParams(): IRouteBuilderInstance<T, RootStateType> {
+        const routeStateInfo: IRouteStateClassInfo = ClassTypeInfo.maybeGetExtension(
+            this.currentState, ROUTESTATE_CLASS_KEY);
+
+        if (routeStateInfo && routeStateInfo.queryParams) {
+            _.forEach(routeStateInfo.queryParams, (propertyKey: string, queryParamKey: string) => {
+                if (!_.isNil(this.currentState[propertyKey])) {
+                    this.currentState[propertyKey] = null;
+                }
+            });
+        }
+
+        return this;
+    }
+
+    doNotResetChildRoutes(): IRouteBuilderInstance<T, RootStateType> {
+        this._doNotResetChildRoutes = true;
+
+        return this;
+    }
+
     build(): RootStateType {
+        if (this.currentState && !this._doNotResetChildRoutes) {
+            this.currentState.currentRoute = null;
+        }
+
         return this.clonedRoute;
     }
 
@@ -368,10 +435,10 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
         const currentRoute = anotherRoute ? anotherRoute : this.routeToClone;
 
         // first, we clone the old route
-        const oldSerialized = currentRoute.cursor.db.serialize(currentRoute.cursor.path);
+        const oldSerialized = this.routeToClone.cursor.db.serialize(this.routeToClone.cursor.path);
         const oldClonedCursor = new SkeletosCursor(true);
         oldClonedCursor.db.deserialize(oldSerialized);
-        const oldClonedRoute = new (currentRoute as any).constructor(oldClonedCursor, oldClonedCursor.transaction);
+        const oldClonedRoute = new (this.routeToClone as any).constructor(oldClonedCursor, oldClonedCursor.transaction);
 
         // next we merge the clonedRoute into routeToClone
         const serialized = this.clonedRoute.cursor.db.serialize();
@@ -383,8 +450,6 @@ export class InternalRouteBuilder<T extends AbstractRouteState, RootStateType ex
             currentRoute, oldClonedRoute, this.serverRequest,
             this.serverResponse
         ) as FireRouteUpdateAction).asPromise();
-
-        // TODO need to set the loading states for those states that have changed...
     }
     
     private createDummyObject(forState: AbstractRouteState): AbstractRouteState {

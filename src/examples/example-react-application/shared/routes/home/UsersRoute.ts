@@ -10,12 +10,10 @@ export class UsersRoute extends AbstractRouteState {
 
 
     @QueryParam()
-    @Validate((joi) => joi.string())
     @Primitive()
     search: string;
 
     @QueryParam("id") // you can specify a different key for the query parameter
-    @Validate((joi) => joi.string())
     @Primitive()
     searchById: string;
 

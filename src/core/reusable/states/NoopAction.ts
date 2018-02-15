@@ -2,7 +2,7 @@
 // © The Pythian Group Inc., 2017
 // All Rights Reserved.
 // *******************************************************************************
-import {AbstractSkeletosAction} from "../extendible/AbstractSkeletosAction";
+import {AbstractSkeletosAction} from "../../extendible/AbstractSkeletosAction";
 
 /**
  * An action which does nothing.  Useful particularily in the UI when, in `getCommands`, using a terniary to decide

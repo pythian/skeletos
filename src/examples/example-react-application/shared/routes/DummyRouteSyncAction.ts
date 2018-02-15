@@ -26,6 +26,6 @@ export class DummyRouteSyncAction extends AbstractRouteAction<HomeRoute, HomeRou
         setTimeout(() => {
             this.getRootState(RootState).loadedSync += routeName + " Ended<br>";
             callback();
-        }, 500);
+        }, 0);
     }
 }

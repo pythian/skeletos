@@ -4,9 +4,9 @@
 // *******************************************************************************
 import _ = require("lodash");
 
-import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
-import {SkeletosDictionary} from "./SkeletosDictionary";
-import {SimpleSkeletosAction} from "../extendible/SimpleSkeletosAction";
+import {AbstractSkeletosState} from "../../extendible/AbstractSkeletosState";
+import {SkeletosDictionary} from "../states/SkeletosDictionary";
+import {SimpleSkeletosAction} from "../../extendible/SimpleSkeletosAction";
 
 export interface ISimpleDictionaryReferenceRemoverActionArg<T extends AbstractSkeletosState> {
     dictionaryToRemoveFrom: SkeletosDictionary<T>;

@@ -2,17 +2,17 @@
 // © The Pythian Group Inc., 2017
 // All Rights Reserved.
 // *******************************************************************************
-import {AbstractSkeletosState} from "../extendible/AbstractSkeletosState";
-import {SkeletosCursor} from "../base/SkeletosCursor";
+import {AbstractSkeletosState} from "../../extendible/AbstractSkeletosState";
+import {SkeletosCursor} from "../../base/SkeletosCursor";
 
 /**
- * Represents a state that holds a single Date value. Use this state to build a typed collection
+ * Represents a state that holds a single Number value. Use this state to build a typed collection
  * using SkeletosList or SkeletosDictionary.
  */
-export class DateState extends AbstractSkeletosState {
+export class NumberState extends AbstractSkeletosState {
 
     /**
-     * The value.
+     * The value
      *
      */
     get valueCursor(): SkeletosCursor {
@@ -20,19 +20,18 @@ export class DateState extends AbstractSkeletosState {
     }
 
     /**
-     * The value.
+     * The value
      *
      */
-    get value(): Date {
+    get value(): number {
         return this.valueCursor.get();
     }
 
     /**
-     * The value.
+     * The value
      *
      */
-    set value(value: Date) {
+    set value(value: number) {
         this.valueCursor.set(value);
     }
-
 }

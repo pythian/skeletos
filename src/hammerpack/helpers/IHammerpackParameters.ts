@@ -10,6 +10,11 @@ export interface IHammerpackParameters {
         dir: string;
 
         /**
+         * The relative URL where the static assets are located on the server.
+         */
+        staticAssetsPath: string;
+
+        /**
          * The URL of the hot reload server.
          */
         hotreload: string;

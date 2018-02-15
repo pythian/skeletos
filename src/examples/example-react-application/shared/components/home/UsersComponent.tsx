@@ -1,26 +1,17 @@
 import * as React from "react";
-import {AbstractRouteComponent} from "../../../../../react-web-router";
 import {HomeRoute} from "../../routes/HomeRoute";
-import {LoadingState} from "../../../../../core";
 import {UsersRoute} from "../../routes/home/UsersRoute";
 import {DummyUiState} from "../../states/DummyUiState";
 import {UserComponent} from "./users/UserComponent";
+import {AbstractDummyComponent} from "../AbstractDummyComponent";
 
-export class UsersComponent extends AbstractRouteComponent<DummyUiState, UsersRoute, HomeRoute> {
-
-    protected doRender(): JSX.Element | false | null {
-        return (
-            <div>
-                UsersComponent
-                <div style={{marginLeft: 30}}>
-                    <UserComponent skeletosState={this.skeletosState} route={this.route} />
-                </div>
-            </div>
-        );
+export class UsersComponent extends AbstractDummyComponent<DummyUiState, UsersRoute, HomeRoute> {
+    protected getComponentName(): string {
+        return "UsersComponent";
     }
 
-    protected doRenderLoading(loading: LoadingState): JSX.Element | false | null {
-        return null;
+    protected getSubComponents(): JSX.Element | JSX.Element[] {
+        return <UserComponent skeletosState={this.skeletosState} route={this.route} />;
     }
 
 }

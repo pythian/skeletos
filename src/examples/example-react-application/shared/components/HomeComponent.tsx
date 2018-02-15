@@ -5,6 +5,7 @@ import {AbstractRootRouteComponent} from "../../../../react-web-router";
 import {ProfileComponent} from "./home/ProfileComponent";
 import {TodosComponent} from "./home/TodosComponent";
 import {UsersComponent} from "./home/UsersComponent";
+import {HammerpackWebserviceUtil} from "../../../../hammerpack";
 require("./HomeComponent.less");
 
 // tslint:disable
@@ -12,8 +13,12 @@ require("./HomeComponent.less");
 export class HomeComponent extends AbstractRootRouteComponent<RootState, HomeRoute> {
 
     render(): JSX.Element {
+        const canadaFlag: string = HammerpackWebserviceUtil.SINGLETON.getServerUrl("canada2.png");
+
         return (
             <div>
+                <img src={canadaFlag}/>
+                <br/>
                 HomeComponent
                 <div style={{marginLeft: 30}}>
                     <ProfileComponent skeletosState={this.skeletosState.ui} route={this.route.profile} />

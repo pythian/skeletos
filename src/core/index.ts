@@ -43,23 +43,27 @@ export {ISkeletosCommand} from "./extendible/ISkeletosCommand";
 
 
 // reusable package
-export {LoadingAndErrorState} from "./reusable/LoadingAndErrorState";
-export {BooleanState} from "./reusable/BooleanState";
-export {DateState} from "./reusable/DateState";
-export {ErrorState} from "./extendible/ErrorState";
-export {LoadingState} from "./extendible/LoadingState";
-export {NoopAction} from "./reusable/NoopAction";
-export {NumberState} from "./reusable/NumberState";
-export {ISimpleDictionaryReferenceRemoverActionArg, SimpleDictionaryReferenceRemoverAction} from "./reusable/SimpleDictionaryReferenceRemoverAction";
-export {ISimpleDictionaryReferenceSetterActionArg, SimpleDictionaryReferenceSetterAction} from "./reusable/SimpleDictionaryReferenceSetterAction";
-export {SimpleStateSetterAction, ISimpleStateSetterActionArg} from "./reusable/SimpleStateSetterAction";
-export {SkeletosDictionary} from "./reusable/SkeletosDictionary";
-export {SkeletosList} from "./reusable/SkeletosList";
-export {StringState} from "./reusable/StringState";
+export {ResetLoadingStatesAction, ILoadingStateToReset} from "./reusable/actions/ResetLoadingStatesAction";
+export {ISimpleDictionaryReferenceRemoverActionArg, SimpleDictionaryReferenceRemoverAction} from "./reusable/actions/SimpleDictionaryReferenceRemoverAction";
+export {ISimpleDictionaryReferenceSetterActionArg, SimpleDictionaryReferenceSetterAction} from "./reusable/actions/SimpleDictionaryReferenceSetterAction";
+export {SimpleStateSetterAction, ISimpleStateSetterActionArg} from "./reusable/actions/SimpleStateSetterAction";
+
+export {BooleanState} from "./reusable/states/BooleanState";
+export {DateState} from "./reusable/states/DateState";
+export {ErrorState} from "./reusable/states/ErrorState";
+export {LoadingAndErrorState} from "./reusable/states/LoadingAndErrorState";
+export {LoadingState} from "./reusable/states/LoadingState";
+export {NoopAction} from "./reusable/states/NoopAction";
+export {NumberState} from "./reusable/states/NumberState";
+export {SkeletosDictionary} from "./reusable/states/SkeletosDictionary";
+export {SkeletosList} from "./reusable/states/SkeletosList";
+export {StringState} from "./reusable/states/StringState";
 
 
 // helpers package
 export {generateUniqueId} from "./helpers/generateUniqueId";
+export {ProcessEnvUtils} from "./helpers/ProcessEnvUtils";
+export {UrlUtils} from "./helpers/UrlUtils";
 export * from "./helpers/logging/ConsoleLogger";
 export * from "./helpers/logging/DefaultLogger";
 export {ELogLevel} from "./helpers/logging/ELogLevel";

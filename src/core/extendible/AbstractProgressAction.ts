@@ -22,11 +22,11 @@ export abstract class AbstractProgressAction extends AbstractAction {
     public static globalIncrementProgressBarFn: () => void;
     public static globalCompleteProgressBarFn: () => void;
 
-    private static PROGRESS_COMMAND_KEY_PREFIX: string = "AbstractProgressAction.";
+    private static PROGRESS_COMMAND_KEY_PREFIX: string = "AbstractProgressAction-";
     private static START_PROGRESS_COMMAND_KEY: string = AbstractProgressAction.PROGRESS_COMMAND_KEY_PREFIX +
         "startProgressBar";
     private static INCREMENT_PROGRESS_COMMAND_KEY: string = AbstractProgressAction.PROGRESS_COMMAND_KEY_PREFIX +
-        "incrementProgressBar.";
+        "incrementProgressBar-";
     private static COMPLETE_PROGRESS_COMMAND_KEY: string = AbstractProgressAction.PROGRESS_COMMAND_KEY_PREFIX +
         "completeProgressBar";
 
@@ -47,7 +47,7 @@ export abstract class AbstractProgressAction extends AbstractAction {
             newCmds.push(this.callFunctionAsynchronously(this._completeProgressBar));
             return newCmds;
         } else {
-            const newCmds: object = [];
+            const newCmds: object = {};
             const keys: string[] = [];
 
             newCmds[AbstractProgressAction.START_PROGRESS_COMMAND_KEY] =
@@ -59,7 +59,7 @@ export abstract class AbstractProgressAction extends AbstractAction {
 
                 // first we need to make sure all commands depend on start progress starting first.
                 if (_.isArray(value)) {
-                    newCmds[key] = value.unshift(AbstractProgressAction.START_PROGRESS_COMMAND_KEY);
+                    newCmds[key] = [AbstractProgressAction.START_PROGRESS_COMMAND_KEY, ...value];
                 } else {
                     newCmds[key] = [AbstractProgressAction.START_PROGRESS_COMMAND_KEY, value];
                 }

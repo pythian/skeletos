@@ -1,7 +1,6 @@
 import _ = require("lodash");
 import async = require("async");
 import express = require("express");
-import cuid = require("cuid");
 import helmet = require("helmet");
 import compression = require("compression");
 import expressValidator = require("express-validator");
@@ -67,6 +66,7 @@ export abstract class AbstractInitializeServerAction<RenderActionType extends Ab
             this.callFunctionSynchronously(this.setupStaticAssetsMiddleware),
             this.callFunctionSynchronously(this.setupPageRenderMiddleware),
             this.callFunctionSynchronously(this.setupAPIMiddleware),
+            this.callFunctionSynchronously(this.setupAdditionalRoutes),
             this.callFunctionSynchronously(this.setupServer),
         ];
     }
@@ -186,14 +186,6 @@ export abstract class AbstractInitializeServerAction<RenderActionType extends Ab
     protected initializeLogging(): void {
         this.expressApp.use(
             this.getPathsToLog(),
-            (req: express.Request, res: express.Response, next: express.NextFunction) => {
-                /* tslint:disable */
-                // add a unique identifier to the request, so that we can identify all log messages
-                // that are from the same request
-                req["reqId"] = cuid();
-                /* tslint:enable */
-                next();
-            },
             requestLogger()
         );
     }
@@ -301,6 +293,13 @@ export abstract class AbstractInitializeServerAction<RenderActionType extends Ab
      * Default: does nothing.
      */
     protected setupAPIMiddleware(): void {
+        // nothing
+    }
+
+    /**
+     * Set up additional routes that you have that are neither API nor middleware.
+     */
+    protected setupAdditionalRoutes(): void {
         // nothing
     }
 

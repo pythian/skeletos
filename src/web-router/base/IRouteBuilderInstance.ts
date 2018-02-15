@@ -44,6 +44,23 @@ export interface IRouteBuilderInstance<T extends AbstractRouteState, RootStateTy
     queryParam(selector: (input: T) => string|number|boolean, value: any): IRouteBuilderInstance<T, RootStateType>;
 
     /**
+     * Resets all the query parameters.
+     *
+     * @returns {IRouteBuilderInstance<T extends AbstractRouteState, RootStateType extends AbstractRouteState>}
+     */
+    resetAllQueryParams(): IRouteBuilderInstance<T, RootStateType>;
+
+    /**
+     * The default behavior when you call .build() or any other function that uses .build() -- such as `.buildString()` --
+     * is that all the child routes are reset.
+     *
+     * If you do not want the child routes to be reset, call this function.
+     *
+     * @returns {IRouteBuilderInstance<T extends AbstractRouteState, RootStateType extends AbstractRouteState>}
+     */
+    doNotResetChildRoutes(): IRouteBuilderInstance<T, RootStateType>;
+
+    /**
      * Builds the Route state and returns it.
      *
      * @returns {RootStateType}

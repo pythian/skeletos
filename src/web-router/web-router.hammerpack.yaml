@@ -19,6 +19,7 @@ project:
 
   dependencies:
     - ../core
+    - ../hammerpack
     - ../shared-interfaces
 #======================================================================================================
 
@@ -67,9 +68,12 @@ build:
     inverseAlias:
       - find: ${repo:root-directory}/src/core/**
         replace: skeletos
+      - find: ${repo:root-directory}/src/hammerpack/**
+        replace: skeletos-hammerpack
 
     extraNpmModules:
       skeletos: "^2.0.0"
+      skeletos-hammerpack: "^2.0.0"
 
     bundleSuffix: rootPackageVersion
 
