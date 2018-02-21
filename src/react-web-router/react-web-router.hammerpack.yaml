@@ -20,7 +20,9 @@ project:
   dependencies:
     - ../core
     - ../web-router
+    - ../hammerpack
     - ../react
+    - ../shared-interfaces
 #======================================================================================================
 
 
@@ -72,6 +74,8 @@ build:
         replace: skeletos-web-router
       - find: ${repo:root-directory}/src/react/**
         replace: skeletos-react
+      - find: ${repo:root-directory}/src/hammerpack/**
+        replace: skeletos-hammerpack
 
     extraNpmModules:
       skeletos: "^2.0.0"

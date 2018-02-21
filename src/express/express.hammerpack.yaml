@@ -19,6 +19,8 @@ project:
 
   dependencies:
     - ../core
+    - ../hammerpack
+    - ../shared-interfaces
     - ../web-router
 #======================================================================================================
 
@@ -67,6 +69,8 @@ build:
     inverseAlias:
       - find: ${repo:root-directory}/src/core/**
         replace: skeletos
+      - find: ${repo:root-directory}/src/hammerpack/**
+        replace: skeletos-hammerpack
       - find: ${repo:root-directory}/src/web-router/**
         replace: skeletos-web-router
 

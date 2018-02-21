@@ -1,6 +1,6 @@
 {
   "name": "skeletos",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "Skeletos is an in-memory state management framework.",
   "repository": "https://github.com/pythian/skeletos",
   "author": "Pythian and Atif Ali",
@@ -55,7 +55,7 @@
     "@types/sequelize": "^4.27.1",
     "@types/serve-favicon": "^2.2.30",
     "@types/serve-static": "^1.13.1",
-    "hammerpack": "^0.0.7",
+    "hammerpack": "^0.0.10",
     "tslint": "^5.8.0",
     "tslint-microsoft-contrib": "^5.0.1",
     "tslint-react": "^3.2.0",

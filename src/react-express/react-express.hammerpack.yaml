@@ -21,7 +21,9 @@ project:
     - ../core
     - ../express
     - ../react
+    - ../hammerpack
     - ../web-router
+    - ../shared-interfaces
 #======================================================================================================
 
 
@@ -73,6 +75,8 @@ build:
         replace: skeletos-express
       - find: ${repo:root-directory}/src/react/**
         replace: skeletos-react
+      - find: ${repo:root-directory}/src/hammerpack/**
+        replace: skeletos-hammerpack
       - find: ${repo:root-directory}/src/web-router/**
         replace: skeletos-web-router
 
