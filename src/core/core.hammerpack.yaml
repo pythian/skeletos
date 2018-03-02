@@ -3,7 +3,9 @@
 ##
 job:
   id: dist
-  do: build
+  do:
+    - build
+    - test
 #--------------------------------------------------------------------------------------------------------
 
 
@@ -64,3 +66,35 @@ build:
     bundleSuffix: rootPackageVersion
 
 #<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+## TEST TASK
+##
+##
+test:
+#  do: typescript,jest|selenium
+  do: typescript,jest
+
+  typescript:
+    compile-files: "**/__tests__/**.ts*"
+
+#  ## Settings for jest tests.
+#  jest:
+#    ## Which directories to pick up the tests from. This can be a regex
+#    jest-code-dirs: "__tests__/.*\\.(ts|tsx)$"
+#
+#    junit-file: jest.junit.xml
+#
+#    coverage-output-directory: coverageJest
+#
+#    moduleNameMapper:
+#      ## Any require module for Jest you want to mock or map goes here. E.g.:
+#      #"^jquery": ${repo:root-directory}/src-mock-jquery/jquery.js
+#
+#  ## Settings for selenium tests.
+#  selenium:
+#    junit-file: selenium.junit.xml
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

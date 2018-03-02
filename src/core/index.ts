@@ -63,6 +63,7 @@ export {StringState} from "./reusable/states/StringState";
 // helpers package
 export {generateUniqueId} from "./helpers/generateUniqueId";
 export {ProcessEnvUtils} from "./helpers/ProcessEnvUtils";
+export {ObjectType} from "./helpers/ObjectType";
 export {UrlUtils} from "./helpers/UrlUtils";
 export * from "./helpers/logging/ConsoleLogger";
 export * from "./helpers/logging/DefaultLogger";

@@ -4,6 +4,7 @@ import {HomeRoute} from "../shared/routes/HomeRoute";
 // import {HomeComponent} from "../shared/components/HomeComponent";
 import {SkeletosCursor} from "../../../core";
 import {AbstractHammerpackRenderAction} from "../../../react-express-hammerpack";
+import {HomeComponent} from "../shared/components/HomeComponent";
 
 
 export class ExampleAppRenderAction extends AbstractHammerpackRenderAction<RootState, HomeRoute> {

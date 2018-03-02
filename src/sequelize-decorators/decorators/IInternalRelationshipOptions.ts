@@ -39,7 +39,7 @@ export interface IInternalRelationshipOptions {
     /**
      * If this is a belongsToRelationship, then this field is the assocation class. This must be a class with @Persist
      */
-    belongsToManyAssociationType?: () => typeof AbstractSkeletosState;
+    belongsToManyAssociationType?: typeof AbstractSkeletosState;
 
     /**
      * Instantiated object of belongsToManyAssociationType().
@@ -57,6 +57,6 @@ export interface IInternalRelationshipOptions {
     relationshipConstraint?: boolean;
 }
 
-export const RELATIONSHIP_PROP_KEY: string = "Cerebri.IRelationshipMetaInfo";
+export const RELATIONSHIP_PROP_KEY: string = "skeletos-sequelize.IRelationshipMetaInfo";
 export const RELATIONSHIP_SINGULAR_PREFIX_FOR_AS: string = "_";
 export const RELATIONSHIP_PLURAL_PREFIX_FOR_AS: string = "_p_";

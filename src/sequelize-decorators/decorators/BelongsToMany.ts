@@ -1,3 +1,4 @@
+import _ = require("lodash");
 import {EInternalRelationshipType, IInternalRelationshipOptions, RELATIONSHIP_PROP_KEY} from "./IInternalRelationshipOptions";
 import {IBelongsToManyOptions} from "./IBelongsToManyOptions";
 import {PersistedStatesRegistry} from "../base/PersistedStatesRegistry";
@@ -5,6 +6,7 @@ import {ITableOptions} from "./ITableOptions";
 import {TABLE_KEY} from "./Table";
 import {IInternalTableOptions} from "./IInternalTableOptions";
 import {AbstractSkeletosState, ClassTypeInfo, ErrorUtil, PropTypeInfo, SkeletosCursor} from "../../core";
+import {IColumnOptions} from "./IColumnOptions";
 
 /**
  * Decorator to mark a property as a belongs-to-many relationship.
@@ -16,7 +18,7 @@ import {AbstractSkeletosState, ClassTypeInfo, ErrorUtil, PropTypeInfo, SkeletosC
  *     by default, which means constraints are enabled. See
  *     http://docs.sequelizejs.com/en/latest/docs/associations/#enforcing-a-foreign-key-reference-without-constraints
  */
-export function BelongsToMany(options: IBelongsToManyOptions, constraint: boolean = true) {
+export function BelongsToMany<T extends AbstractSkeletosState>(options: IBelongsToManyOptions<T>, constraint: boolean = true) {
     return function BelongsToManyDecorator(target: AbstractSkeletosState, propertyKey: string): void {
 
         if (!options) {
@@ -28,10 +30,8 @@ export function BelongsToMany(options: IBelongsToManyOptions, constraint: boolea
         propTypeInfo
             .putExtension(RELATIONSHIP_PROP_KEY, {
                 relationshipType: EInternalRelationshipType.belongsToMany,
-                targetOrForeignKey: options.propInClass,
-                belongsToManyOtherKey: options.otherPropInClass,
                 relationshipConstraint: constraint,
-                belongsToManyAssociationType: options.associationType,
+                belongsToManyAssociationType: options.associationType(),
                 lazyLoadRelationship: (relationshipOptions: IInternalRelationshipOptions) => {
                     // also get the class name and property key of the other class.
                     const relatedClassInstance: AbstractSkeletosState = propTypeInfo.stateTypeInstance;
@@ -42,7 +42,7 @@ export function BelongsToMany(options: IBelongsToManyOptions, constraint: boolea
                     // before we lazy load the relationship, we need to ensure that association type is initialized
                     if (!relationshipOptions.belongsToManyAssociationTypeInstance) {
                         const associationInstance: AbstractSkeletosState =
-                            new (options.associationType())(new SkeletosCursor());
+                            new (options.associationType() as any)(new SkeletosCursor());
 
                         const cachedInstance: AbstractSkeletosState = PersistedStatesRegistry.persistedStates[(ClassTypeInfo
                             .getOrCreateClassTypeInfo(associationInstance)
@@ -62,29 +62,42 @@ export function BelongsToMany(options: IBelongsToManyOptions, constraint: boolea
                         (associationClassTypeInfo.getExtension(TABLE_KEY) as IInternalTableOptions);
 
                     if (!relatedClassPersistStateOptions) {
-                        throw new Error("Related class does not have @Persist specified: " +
+                        throw new Error("Related class does not have @Table specified: " +
                             ErrorUtil.getDebugName(relatedClassInstance));
                     }
                     if (!associationClassPersistStateOptions) {
-                        throw new Error("Association class does not have @Persist specified: " +
+                        throw new Error("Association class does not have @Table specified: " +
                             ErrorUtil.getDebugName(relatedClassInstance));
                     }
 
-                    if (!associationClassPersistStateOptions.allProps[options.propInClass]) {
+                    // construct a dummy object to give to the functions that tell us the properties to use
+                    const dummyObj: {[name: string]: string} = {};
+                    _.forEach(associationClassPersistStateOptions.allProps, (value: IColumnOptions, jsProp: string) => {
+                        dummyObj[jsProp] = jsProp;
+                    });
+
+                    const propInClass: string = options.propInClass(dummyObj as any);
+                    const otherPropInClass: string = options.otherPropInClass(dummyObj as any);
+
+                    if (!associationClassPersistStateOptions.allProps[propInClass]) {
                         throw new Error(
-                            "There is no property called " + options.propInClass + " defined in " +
+                            "There is no @Column property called " + propInClass + " defined in " +
                             ErrorUtil.getDebugName(associationClassInstance)
                         );
                     }
 
-                    if (!associationClassPersistStateOptions.allProps[options.otherPropInClass]) {
+                    if (!associationClassPersistStateOptions.allProps[otherPropInClass]) {
                         throw new Error(
-                            "There is no property called " + options.otherPropInClass + " defined in " +
+                            "There is no @Column property called " + otherPropInClass + " defined in " +
                             ErrorUtil.getDebugName(associationClassInstance)
                         );
                     }
 
-                    // now store the instantiated type
+                    // set the properties in our relationship options.
+                    relationshipOptions.targetOrForeignKey = propInClass;
+                    relationshipOptions.belongsToManyOtherKey = otherPropInClass;
+
+                    // also store the instantiated type
                     relationshipOptions.relatedInstantiatedType = relatedClassInstance;
                 }
             } as IInternalRelationshipOptions);
