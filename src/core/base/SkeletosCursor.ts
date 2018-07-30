@@ -102,8 +102,13 @@ running your modification code with a transaction (typically using an AbstractSk
      */
     constructor(arg1?: boolean|SkeletosCursor|SkeletosDb, arg2?: boolean|SkeletosTransaction) {
         let createNewTransaction: boolean = false;
-        
-        if (_.isBoolean(arg1)) {
+
+        if (arguments.length === 0) {
+            // create a new DB
+            this._db = new SkeletosDb();
+            this._path = [];
+        } else if (_.isBoolean(arg1)) {
+            // create a new DB
             this._db = new SkeletosDb();
             this._path = [];
             createNewTransaction = arg1;
