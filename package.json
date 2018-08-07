@@ -57,12 +57,16 @@
     "@types/serve-favicon": "^2.2.30",
     "@types/serve-static": "^1.13.1",
     "hammerpack": "0.0.14",
+    "jest": "^23.4.2",
+    "jest-junit": "^5.1.0",
+    "ts-jest": "^23.1.3",
     "tslint": "^5.8.0",
     "tslint-microsoft-contrib": "^5.0.1",
     "tslint-react": "^3.2.0",
     "typescript": "^2.6.2"
   },
   "scripts": {
+    "test": "jest",
     "build-all": "npm run build-core && npm run build-express && npm run build-hammerpack && npm run build-react && npm run build-react-express && npm run build-react-express-hammerpack && npm run build-react-web-router && npm run build-sequelize && npm run build-sequelize-decorators && npm run build-validate && npm run build-web-router",
     "publish-all": "npm run publish-core && npm run publish-express && npm run publish-hammerpack && npm run publish-react && npm run publish-react-express && npm run publish-react-express-hammerpack && npm run publish-react-web-router && npm run publish-sequelize && npm run publish-sequelize-decorators && npm run publish-validate && npm run publish-web-router",
     "build-publish-all": "npm run build-all && npm run publish-all",
@@ -90,5 +94,21 @@
     "publish-validate": "npm publish .hammerpack/skeletos-validate/dist/dist",
     "publish-web-router": "npm publish .hammerpack/skeletos-web-router/dist/dist",
     "dev-example-react-application": "node node_modules/hammerpack/dist/main.js --conf src/examples/example-react-application/example-react-application.hammerpack.yaml --job:do develop"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "cacheDirectory": "<rootDir>/.jest/cache",
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(src.*/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
   }
 }

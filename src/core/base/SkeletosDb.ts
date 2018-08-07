@@ -865,17 +865,23 @@ export class SkeletosDb {
                             retVal += "\t";
                             i += 1;
                             break;
-                        case "\u2028":
-                            retVal += "\u2028";
-                            i += 1;
-                            break;
-                        case "\u2029":
-                            retVal += "\u2029";
-                            i += 1;
-                            break;
                         default:
-                            // something we don't recognize, treat as a slash
-                            retVal += "\\";
+                            if ((i + 6) < input.length) {
+                                const next5Chars = input.substring(i + 1, i + 6);
+                                if (next5Chars === "u2028") {
+                                    retVal += "\u2028";
+                                    i += 5;
+                                } else if (next5Chars === "u2029") {
+                                    retVal += "\u2029";
+                                    i += 5;
+                                } else {
+                                    // something we don't recognize, treat as a slash
+                                    retVal += "\\";
+                                }
+                            } else {
+                                // something we don't recognize, treat as a slash
+                                retVal += "\\";
+                            }
                     }
                 } else {
                     retVal += char;
