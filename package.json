@@ -1,6 +1,6 @@
 {
   "name": "skeletos",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "Skeletos is an in-memory state management framework.",
   "repository": "https://github.com/pythian/skeletos",
   "author": "Pythian and Atif Ali",
