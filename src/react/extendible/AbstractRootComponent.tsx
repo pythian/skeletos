@@ -9,8 +9,9 @@ export abstract class AbstractRootComponent<SkeletosStateType extends AbstractSk
 
     private _onDbChange: ISkeletosDbListener;
 
-    constructor() {
-        super();
+    componentWillMount(): void {
+        super.componentWillMount();
+
         this.state = {
             numberOfTimesChanged: 0
         };
