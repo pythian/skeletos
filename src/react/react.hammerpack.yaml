@@ -68,7 +68,7 @@ build:
         replace: skeletos
 
     extraNpmModules:
-      skeletos: "^2.0.0"
+      skeletos: "^2.0.8"
 
     bundleSuffix: rootPackageVersion
 
